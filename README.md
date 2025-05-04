@@ -22,7 +22,7 @@ Here're some of the project's best features:
 <p>1. Clone the repository:</p>
 
 ```
-git clone https://github.com/ArpitKadam/Car-Price-Prediction-using-Machine-Learning.git
+git clone https://github.com/SlammerStar/Car-Price-Prediction-using-Machine-Learning.git
 ```
 
 <p>2. Install the required packages</p>
@@ -58,4 +58,4 @@ This project is licensed under the MIT.
 
 <h2>💖Like my work?</h2>
 
-As a student in the AIML branch at Shivajrao S. Jondhale College of Engineering I am passionate about applying machine learning and data science to real-world problems. I aim to enhance my skills in machine learning and software development through projects like this and look forward to taking on more complex challenges in the future.
+As a student in the Data Science branch at SRM Institute of Science and Technology I am passionate about applying machine learning and data science to real-world problems. I aim to enhance my skills in machine learning and software development through projects like this and look forward to taking on more complex challenges in the future.
