@@ -2,10 +2,6 @@
 
 A machine learning application that predicts car prices based on features like model, year, mileage, and engine size. Built with a user-friendly **Streamlit** interface for easy interaction.
 
-## 🔗 Demo
-
-You can try the live demo here:  
-[Car Price Prediction App](https://car-price-prediction-using-machine.onrender.com/)
 
 ## 🚀 Features
 
