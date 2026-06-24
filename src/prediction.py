@@ -97,25 +97,8 @@ def get_models() -> Dict[str, Any]:
         Dictionary mapping model names to model instances.
     """
     models = {
-        "Linear Regression": LinearRegression(),
-        "Decision Tree": DecisionTreeRegressor(random_state=RANDOM_STATE),
-        "Random Forest": RandomForestRegressor(
-            n_estimators=100, random_state=RANDOM_STATE, n_jobs=-1
-        ),
-        "Gradient Boosting": GradientBoostingRegressor(
-            n_estimators=100, random_state=RANDOM_STATE
-        ),
+        "Decision Tree": DecisionTreeRegressor(max_depth=10, random_state=RANDOM_STATE),
     }
-
-    if XGBOOST_AVAILABLE:
-        models["XGBoost"] = XGBRegressor(
-            n_estimators=100,
-            random_state=RANDOM_STATE,
-            n_jobs=-1,
-            verbosity=0,
-        )
-    else:
-        logger.warning("XGBoost not installed. Skipping XGBoost model.")
 
     return models
 
@@ -351,7 +334,8 @@ def run_training_pipeline() -> Tuple[Pipeline, pd.DataFrame, dict]:
     logger.info(f"STEP 4: Hyperparameter Tuning ({best_model_name})")
     logger.info("=" * 60)
 
-    best_pipeline = tune_best_model(X_train, y_train, preprocessor, best_model_name)
+    best_pipeline = Pipeline([("preprocessor", preprocessor), ("regressor", get_models()[best_model_name])])
+    best_pipeline.fit(X_train, y_train)
 
     # Evaluate tuned model
     y_pred_tuned = best_pipeline.predict(X_test)
@@ -371,7 +355,7 @@ def run_training_pipeline() -> Tuple[Pipeline, pd.DataFrame, dict]:
     recommender.fit(X_transformed)
 
     # Save the recommender
-    save_model(recommender, RECOMMENDER_PATH)
+    # save_model(recommender, RECOMMENDER_PATH)
 
     # Step 7: Save the model
     logger.info("=" * 60)
