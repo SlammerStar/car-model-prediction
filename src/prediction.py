@@ -334,7 +334,9 @@ def run_training_pipeline() -> Tuple[Pipeline, pd.DataFrame, dict]:
     logger.info(f"STEP 4: Hyperparameter Tuning ({best_model_name})")
     logger.info("=" * 60)
 
-    best_pipeline = Pipeline([("preprocessor", preprocessor), ("regressor", get_models()[best_model_name])])
+    best_pipeline = Pipeline(
+        [("preprocessor", preprocessor), ("regressor", get_models()[best_model_name])]
+    )
     best_pipeline.fit(X_train, y_train)
 
     # Evaluate tuned model
