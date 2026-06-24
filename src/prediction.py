@@ -26,6 +26,7 @@ from sklearn.neighbors import NearestNeighbors
 
 try:
     import xgboost  # noqa: F401
+
     XGBOOST_AVAILABLE = True
 except ImportError:
     XGBOOST_AVAILABLE = False
