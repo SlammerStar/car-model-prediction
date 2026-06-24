@@ -1,0 +1,30 @@
+services:
+  # ------------------------------------------------------------
+  # FastAPI Backend Service
+  # ------------------------------------------------------------
+  - type: web
+    name: car-price-api
+    env: docker
+    region: oregon
+    plan: free
+    dockerCommand: "uvicorn src.api:app --host 0.0.0.0 --port 8000"
+    healthCheckPath: "/docs"
+    envVars:
+      - key: PORT
+        value: 8000
+
+  # ------------------------------------------------------------
+  # Streamlit Frontend Web App
+  # ------------------------------------------------------------
+  - type: web
+    name: car-price-streamlit
+    env: docker
+    region: oregon
+    plan: free
+    dockerCommand: "streamlit run app.py --server.port 8501 --server.address 0.0.0.0"
+    healthCheckPath: "/"
+    envVars:
+      - key: PORT
+        value: 8501
+      # Note: We can add API_URL here if the frontend needs to dynamically route to the backend.
+      # Currently, the frontend loads the pipeline.pkl locally and predicts directly.
