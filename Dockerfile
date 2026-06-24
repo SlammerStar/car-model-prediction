@@ -31,6 +31,9 @@ COPY . .
 # Create necessary directories
 RUN mkdir -p models images data
 
+# Extract pre-trained models
+RUN tar -xzvf models.tar.gz && rm models.tar.gz
+
 # Expose ports for Streamlit and FastAPI
 EXPOSE 8501 8000
 
