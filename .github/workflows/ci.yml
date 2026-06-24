@@ -41,9 +41,9 @@ jobs:
 
       - name: Lint with Flake8
         run: |
-          flake8 src/ api/ tests/ \
+          flake8 src/ tests/ app.py \
             --max-line-length=120 \
-            --ignore=E501,W503,E203 \
+            --ignore=E501,W503,E203,E402 \
             --count \
             --show-source \
             --statistics
@@ -100,11 +100,10 @@ jobs:
 
       - name: Verify imports
         run: |
-          python -c "from src.utils import format_price_inr; print('✅ Utils OK')"
-          python -c "from src.data_preprocessing import prepare_data; print('✅ Data Preprocessing OK')"
-          python -c "from src.feature_engineering import prepare_features; print('✅ Feature Engineering OK')"
-          python -c "from src.predict import predict_price; print('✅ Predict OK')"
-          python -c "from api.main import app; print('✅ FastAPI OK')"
+          python -c "from src.utils import load_model; print('✅ Utils OK')"
+          python -c "from src.data_processing import prepare_data; print('✅ Data Processing OK')"
+          python -c "from src.prediction import predict_price; print('✅ Predict OK')"
+          python -c "from src.api import app; print('✅ FastAPI OK')"
 
       - name: Verify Docker build
         run: |

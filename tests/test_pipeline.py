@@ -14,7 +14,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pytest
 import pandas as pd
-import numpy as np
 
 
 # ============================================================================
@@ -69,8 +68,14 @@ class TestUtils:
         from src.utils import BRAND_FILE_MAP
 
         expected_brands = [
-            "Audi", "BMW", "Ford", "Hyundai",
-            "Mercedes", "Skoda", "Toyota", "Volkswagen",
+            "Audi",
+            "BMW",
+            "Ford",
+            "Hyundai",
+            "Mercedes",
+            "Skoda",
+            "Toyota",
+            "Volkswagen",
         ]
         for brand in expected_brands:
             assert brand in BRAND_FILE_MAP
@@ -105,7 +110,9 @@ class TestDataPreprocessing:
         """Test GBP to INR conversion."""
         from src.data_processing import convert_price_to_inr
 
-        df = pd.DataFrame({"price": [100, 200, 500], "brand": ["Ford", "Toyota", "BMW"]})
+        df = pd.DataFrame(
+            {"price": [100, 200, 500], "brand": ["Ford", "Toyota", "BMW"]}
+        )
         result = convert_price_to_inr(df)
         assert "price_inr" in result.columns
         assert result["price_inr"].iloc[0] == 100 * 115 * 1.4
@@ -131,15 +138,17 @@ class TestFeatureEngineering:
         """Test car_age feature creation."""
         from src.data_processing import create_features
 
-        df = pd.DataFrame({
-            "year": [2020, 2015, 2010],
-            "brand": ["BMW", "Audi", "Ford"],
-            "model": ["X5", "A3", "Focus"],
-            "transmission": ["Automatic", "Manual", "Manual"],
-            "fuelType": ["Diesel", "Petrol", "Petrol"],
-            "price_inr": [1000000, 500000, 300000],
-            "mileage": [10000, 20000, 50000],
-        })
+        df = pd.DataFrame(
+            {
+                "year": [2020, 2015, 2010],
+                "brand": ["BMW", "Audi", "Ford"],
+                "model": ["X5", "A3", "Focus"],
+                "transmission": ["Automatic", "Manual", "Manual"],
+                "fuelType": ["Diesel", "Petrol", "Petrol"],
+                "price_inr": [1000000, 500000, 300000],
+                "mileage": [10000, 20000, 50000],
+            }
+        )
         result = create_features(df)
         assert "car_age" in result.columns
         assert result["car_age"].iloc[0] == 2026 - 2020  # 6
@@ -149,18 +158,20 @@ class TestFeatureEngineering:
         """Test feature-target splitting."""
         from src.data_processing import get_feature_target_split
 
-        df = pd.DataFrame({
-            "brand": ["BMW"],
-            "model": ["X5"],
-            "year": [2020],
-            "car_age": [6],
-            "transmission": ["Automatic"],
-            "mileage": [30000],
-            "fuelType": ["Diesel"],
-            "mpg": [50.0],
-            "engineSize": [2.0],
-            "price_inr": [1500000],
-        })
+        df = pd.DataFrame(
+            {
+                "brand": ["BMW"],
+                "model": ["X5"],
+                "year": [2020],
+                "car_age": [6],
+                "transmission": ["Automatic"],
+                "mileage": [30000],
+                "fuelType": ["Diesel"],
+                "mpg": [50.0],
+                "engineSize": [2.0],
+                "price_inr": [1500000],
+            }
+        )
         X, y = get_feature_target_split(df)
         assert "price_inr" not in X.columns
         assert len(y) == 1
@@ -169,17 +180,19 @@ class TestFeatureEngineering:
         """Test preprocessor construction."""
         from src.data_processing import build_preprocessor
 
-        X = pd.DataFrame({
-            "brand": ["BMW", "Audi"],
-            "model": ["X5", "A3"],
-            "transmission": ["Auto", "Manual"],
-            "fuelType": ["Diesel", "Petrol"],
-            "year": [2020, 2019],
-            "car_age": [6, 7],
-            "mileage": [30000, 40000],
-            "mpg": [50.0, 55.0],
-            "engineSize": [2.0, 1.5],
-        })
+        X = pd.DataFrame(
+            {
+                "brand": ["BMW", "Audi"],
+                "model": ["X5", "A3"],
+                "transmission": ["Auto", "Manual"],
+                "fuelType": ["Diesel", "Petrol"],
+                "year": [2020, 2019],
+                "car_age": [6, 7],
+                "mileage": [30000, 40000],
+                "mpg": [50.0, 55.0],
+                "engineSize": [2.0, 1.5],
+            }
+        )
         preprocessor = build_preprocessor(X)
         assert preprocessor is not None
 
@@ -195,9 +208,14 @@ class TestPredict:
         from src.prediction import create_input_dataframe
 
         df = create_input_dataframe(
-            brand="BMW", model="X5", year=2019,
-            transmission="Automatic", mileage=45000,
-            fuel_type="Diesel", mpg=52.3, engine_size=2.0,
+            brand="BMW",
+            model="X5",
+            year=2019,
+            transmission="Automatic",
+            mileage=45000,
+            fuel_type="Diesel",
+            mpg=52.3,
+            engine_size=2.0,
         )
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 1
@@ -214,6 +232,7 @@ class TestAPI:
     def test_api_imports(self):
         """Test that the API module imports correctly."""
         from src.api import app
+
         assert app is not None
 
     def test_api_root(self):

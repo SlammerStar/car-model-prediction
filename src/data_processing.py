@@ -7,12 +7,10 @@ and building the preprocessing pipeline.
 """
 
 import pandas as pd
-import numpy as np
 from pathlib import Path
-from typing import Tuple, List
+from typing import Tuple
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.pipeline import Pipeline
 
 from src.utils import (
     BRAND_FILE_MAP,
@@ -26,7 +24,6 @@ from src.utils import (
     get_data_dir,
     logger,
 )
-
 
 
 def load_single_brand(filepath: Path, brand_name: str) -> pd.DataFrame:
@@ -101,7 +98,9 @@ def load_and_merge_datasets() -> pd.DataFrame:
         raise FileNotFoundError("No dataset files were loaded successfully.")
 
     merged = pd.concat(frames, ignore_index=True)
-    logger.info(f"Total merged dataset: {len(merged)} records, {merged['brand'].nunique()} brands")
+    logger.info(
+        f"Total merged dataset: {len(merged)} records, {merged['brand'].nunique()} brands"
+    )
     return merged
 
 
@@ -124,8 +123,15 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
 
     # Select only the columns we need
     required_cols = [
-        "brand", "model", "year", "price", "transmission",
-        "mileage", "fuelType", "mpg", "engineSize",
+        "brand",
+        "model",
+        "year",
+        "price",
+        "transmission",
+        "mileage",
+        "fuelType",
+        "mpg",
+        "engineSize",
     ]
     # Keep only columns that exist
     available_cols = [c for c in required_cols if c in df.columns]
@@ -175,16 +181,16 @@ def convert_price_to_inr(df: pd.DataFrame) -> pd.DataFrame:
         DataFrame with new 'price_inr' column.
     """
     df["price_inr"] = df["price"] * EXCHANGE_RATE
-    
+
     # Apply Indian market brand-specific multipliers
     def get_multiplier(brand):
         # Fallback to 1.5 if brand not exactly matched
         return INDIAN_MARKET_MULTIPLIERS.get(brand, 1.5)
-        
+
     df["market_multiplier"] = df["brand"].apply(get_multiplier)
     df["price_inr"] = df["price_inr"] * df["market_multiplier"]
     df.drop(columns=["market_multiplier"], inplace=True)
-    
+
     logger.info(
         f"Converted prices to INR with brand multipliers. "
         f"Range: ₹{df['price_inr'].min():,.0f} - ₹{df['price_inr'].max():,.0f}"
@@ -203,7 +209,6 @@ def prepare_data() -> pd.DataFrame:
     df = clean_data(df)
     df = convert_price_to_inr(df)
     return df
-
 
 
 def create_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -231,7 +236,9 @@ def create_features(df: pd.DataFrame) -> pd.DataFrame:
     df["km_per_year"] = km_driven / df["car_age"].replace(0, 0.5)
 
     # Create premium_brand_flag
-    df["premium_brand_flag"] = df["brand"].apply(lambda x: 1 if x in PREMIUM_BRANDS else 0)
+    df["premium_brand_flag"] = df["brand"].apply(
+        lambda x: 1 if x in PREMIUM_BRANDS else 0
+    )
 
     logger.info(
         f"Created car_age feature. Range: {df['car_age'].min()} - {df['car_age'].max()} years"
@@ -306,7 +313,9 @@ def build_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
     return preprocessor
 
 
-def prepare_features(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series, ColumnTransformer]:
+def prepare_features(
+    df: pd.DataFrame,
+) -> Tuple[pd.DataFrame, pd.Series, ColumnTransformer]:
     """
     Full feature preparation pipeline.
 
@@ -320,4 +329,3 @@ def prepare_features(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series, ColumnT
     X, y = get_feature_target_split(df)
     preprocessor = build_preprocessor(X)
     return X, y, preprocessor
-

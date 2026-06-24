@@ -5,7 +5,6 @@ This module contains shared constants, helper functions for price formatting,
 model persistence, and path management used across the entire application.
 """
 
-import os
 import joblib
 import logging
 from pathlib import Path
@@ -54,7 +53,15 @@ BRAND_FILE_MAP = {
 
 # Feature column definitions
 CATEGORICAL_FEATURES = ["brand", "model", "transmission", "fuelType"]
-NUMERICAL_FEATURES = ["year", "car_age", "mileage", "mpg", "engineSize", "km_per_year", "premium_brand_flag"]
+NUMERICAL_FEATURES = [
+    "year",
+    "car_age",
+    "mileage",
+    "mpg",
+    "engineSize",
+    "km_per_year",
+    "premium_brand_flag",
+]
 TARGET_COLUMN = "price_inr"
 
 # Model save path
@@ -132,9 +139,7 @@ def load_model(path: Path = MODEL_PATH):
         FileNotFoundError: If the model file does not exist.
     """
     if not path.exists():
-        raise FileNotFoundError(
-            f"Model not found at {path}. Run training first."
-        )
+        raise FileNotFoundError(f"Model not found at {path}. Run training first.")
     model = joblib.load(path)
     logger.info(f"Model loaded from {path}")
     return model

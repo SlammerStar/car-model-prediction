@@ -10,11 +10,10 @@ import json
 import warnings
 import numpy as np
 import pandas as pd
-from typing import Dict, Any, Tuple, Optional
-import sys
-from pathlib import Path
+from typing import Dict, Any, Tuple
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -29,6 +28,7 @@ from sklearn.neighbors import NearestNeighbors
 
 try:
     from xgboost import XGBRegressor
+
     XGBOOST_AVAILABLE = True
 except ImportError:
     XGBOOST_AVAILABLE = False
@@ -36,12 +36,14 @@ except ImportError:
 try:
     import mlflow
     import mlflow.sklearn
+
     MLFLOW_AVAILABLE = True
 except ImportError:
     MLFLOW_AVAILABLE = False
 
 try:
     import shap
+
     SHAP_AVAILABLE = True
 except ImportError:
     SHAP_AVAILABLE = False
@@ -49,10 +51,8 @@ except ImportError:
 from src.utils import (
     RANDOM_STATE,
     TEST_SIZE,
-    MODEL_PATH,
     PIPELINE_PATH,
     METADATA_PATH,
-    MODELS_DIR,
     RECOMMENDER_PATH,
     IMAGES_DIR,
     CURRENT_YEAR,
@@ -78,14 +78,15 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 # Plotting style
 plt.style.use("seaborn-v0_8-darkgrid")
 sns.set_palette("husl")
-plt.rcParams.update({
-    "figure.figsize": (10, 6),
-    "figure.dpi": 150,
-    "font.size": 11,
-    "axes.titlesize": 14,
-    "axes.labelsize": 12,
-})
-
+plt.rcParams.update(
+    {
+        "figure.figsize": (10, 6),
+        "figure.dpi": 150,
+        "font.size": 11,
+        "axes.titlesize": 14,
+        "axes.labelsize": 12,
+    }
+)
 
 
 def get_models() -> Dict[str, Any]:
@@ -119,9 +120,7 @@ def get_models() -> Dict[str, Any]:
     return models
 
 
-def evaluate_model(
-    y_true: np.ndarray, y_pred: np.ndarray
-) -> Dict[str, float]:
+def evaluate_model(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
     """
     Compute regression evaluation metrics.
 
@@ -170,10 +169,12 @@ def train_and_compare(
         logger.info(f"Training {name}...")
 
         # Create pipeline
-        pipeline = Pipeline([
-            ("preprocessor", preprocessor),
-            ("regressor", model),
-        ])
+        pipeline = Pipeline(
+            [
+                ("preprocessor", preprocessor),
+                ("regressor", model),
+            ]
+        )
 
         # MLflow tracking
         if MLFLOW_AVAILABLE:
@@ -195,7 +196,7 @@ def train_and_compare(
                 mlflow.sklearn.log_model(
                     pipeline,
                     artifact_path="model",
-                    serialization_format=mlflow.sklearn.SERIALIZATION_FORMAT_CLOUDPICKLE
+                    serialization_format=mlflow.sklearn.SERIALIZATION_FORMAT_CLOUDPICKLE,
                 )
 
                 logger.info(f"{name} - {metrics}")
@@ -269,10 +270,12 @@ def tune_best_model(
     base_model = models_map[best_model_name]
     param_grid = param_grids.get(best_model_name, param_grids["Random Forest"])
 
-    pipeline = Pipeline([
-        ("preprocessor", preprocessor),
-        ("regressor", base_model),
-    ])
+    pipeline = Pipeline(
+        [
+            ("preprocessor", preprocessor),
+            ("regressor", base_model),
+        ]
+    )
 
     search = RandomizedSearchCV(
         estimator=pipeline,
@@ -298,7 +301,7 @@ def tune_best_model(
             mlflow.sklearn.log_model(
                 search.best_estimator_,
                 "tuned_model",
-                serialization_format=mlflow.sklearn.SERIALIZATION_FORMAT_CLOUDPICKLE
+                serialization_format=mlflow.sklearn.SERIALIZATION_FORMAT_CLOUDPICKLE,
             )
 
     return search.best_estimator_
@@ -338,9 +341,7 @@ def run_training_pipeline() -> Tuple[Pipeline, pd.DataFrame, dict]:
     logger.info("=" * 60)
     logger.info("STEP 3: Model Training & Comparison")
     logger.info("=" * 60)
-    comparison_df = train_and_compare(
-        X_train, X_test, y_train, y_test, preprocessor
-    )
+    comparison_df = train_and_compare(X_train, X_test, y_train, y_test, preprocessor)
     print("\n📊 Model Comparison Results:")
     print(comparison_df.to_string(index=False))
 
@@ -350,9 +351,7 @@ def run_training_pipeline() -> Tuple[Pipeline, pd.DataFrame, dict]:
     logger.info(f"STEP 4: Hyperparameter Tuning ({best_model_name})")
     logger.info("=" * 60)
 
-    best_pipeline = tune_best_model(
-        X_train, y_train, preprocessor, best_model_name
-    )
+    best_pipeline = tune_best_model(X_train, y_train, preprocessor, best_model_name)
 
     # Evaluate tuned model
     y_pred_tuned = best_pipeline.predict(X_test)
@@ -363,12 +362,14 @@ def run_training_pipeline() -> Tuple[Pipeline, pd.DataFrame, dict]:
     logger.info("=" * 60)
     logger.info("STEP 5: Train Recommendation Engine")
     logger.info("=" * 60)
-    
+
     # We use the preprocessor to transform all data for the nearest neighbors
     X_transformed = preprocessor.transform(X)
-    recommender = NearestNeighbors(n_neighbors=4, metric='minkowski') # 4 because 1 is the query itself
+    recommender = NearestNeighbors(
+        n_neighbors=4, metric="minkowski"
+    )  # 4 because 1 is the query itself
     recommender.fit(X_transformed)
-    
+
     # Save the recommender
     save_model(recommender, RECOMMENDER_PATH)
 
@@ -390,11 +391,13 @@ def run_training_pipeline() -> Tuple[Pipeline, pd.DataFrame, dict]:
         "n_test_samples": len(X_test),
         "features": {
             "categorical": [
-                c for c in ["brand", "model", "transmission", "fuelType"]
+                c
+                for c in ["brand", "model", "transmission", "fuelType"]
                 if c in X.columns
             ],
             "numerical": [
-                c for c in ["year", "car_age", "mileage", "mpg", "engineSize"]
+                c
+                for c in ["year", "car_age", "mileage", "mpg", "engineSize"]
                 if c in X.columns
             ],
         },
@@ -415,7 +418,6 @@ if __name__ == "__main__":
     print(f"R² Score: {meta['tuned_metrics']['R2_Score']}")
 
 
-
 # ---------------------------------------------------------------------------
 # EDA Visualizations
 # ---------------------------------------------------------------------------
@@ -427,8 +429,12 @@ def plot_price_distribution(df: pd.DataFrame) -> None:
     ax.set_xlabel("Price (₹ Lakhs)")
     ax.set_ylabel("Frequency")
     ax.set_title("Distribution of Car Prices (INR)")
-    ax.axvline(price_lakhs.median(), color="#e74c3c", linestyle="--",
-               label=f"Median: ₹{price_lakhs.median():.1f}L")
+    ax.axvline(
+        price_lakhs.median(),
+        color="#e74c3c",
+        linestyle="--",
+        label=f"Median: ₹{price_lakhs.median():.1f}L",
+    )
     ax.legend()
     plt.tight_layout()
     plt.savefig(IMAGES_DIR / "price_distribution.png", bbox_inches="tight")
@@ -480,7 +486,8 @@ def plot_transmission_distribution(df: pd.DataFrame) -> None:
     trans_counts = df["transmission"].value_counts()
     colors = ["#1abc9c", "#e67e22", "#8e44ad"]
     trans_counts.plot(
-        kind="bar", ax=ax,
+        kind="bar",
+        ax=ax,
         color=colors[: len(trans_counts)],
         edgecolor="white",
     )
@@ -501,8 +508,15 @@ def plot_correlation_heatmap(df: pd.DataFrame) -> None:
     corr = df[numeric_cols].corr()
     mask = np.triu(np.ones_like(corr, dtype=bool))
     sns.heatmap(
-        corr, mask=mask, annot=True, fmt=".2f", cmap="RdBu_r",
-        center=0, square=True, linewidths=0.5, ax=ax,
+        corr,
+        mask=mask,
+        annot=True,
+        fmt=".2f",
+        cmap="RdBu_r",
+        center=0,
+        square=True,
+        linewidths=0.5,
+        ax=ax,
         cbar_kws={"shrink": 0.8},
     )
     ax.set_title("Feature Correlation Heatmap")
@@ -518,8 +532,11 @@ def plot_mileage_vs_price(df: pd.DataFrame) -> None:
     for brand in df["brand"].unique():
         subset = df[df["brand"] == brand]
         ax.scatter(
-            subset["mileage"], subset["price_inr"] / 1_00_000,
-            alpha=0.4, s=15, label=brand,
+            subset["mileage"],
+            subset["price_inr"] / 1_00_000,
+            alpha=0.4,
+            s=15,
+            label=brand,
         )
     ax.set_xlabel("Mileage (miles)")
     ax.set_ylabel("Price (₹ Lakhs)")
@@ -540,10 +557,14 @@ def plot_engine_vs_price(df: pd.DataFrame) -> None:
     engine_bins = sorted(df_plot["engineSize"].unique())
     if len(engine_bins) > 15:
         df_plot["engine_bin"] = pd.cut(df_plot["engineSize"], bins=10)
-        sns.boxplot(x="engine_bin", y="price_lakhs", data=df_plot, ax=ax, palette="viridis")
+        sns.boxplot(
+            x="engine_bin", y="price_lakhs", data=df_plot, ax=ax, palette="viridis"
+        )
         ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
     else:
-        sns.boxplot(x="engineSize", y="price_lakhs", data=df_plot, ax=ax, palette="viridis")
+        sns.boxplot(
+            x="engineSize", y="price_lakhs", data=df_plot, ax=ax, palette="viridis"
+        )
     ax.set_xlabel("Engine Size (L)")
     ax.set_ylabel("Price (₹ Lakhs)")
     ax.set_title("Engine Size vs Price")
@@ -558,12 +579,17 @@ def plot_car_age_vs_price(df: pd.DataFrame) -> None:
     fig, ax = plt.subplots(figsize=(10, 6))
     if "car_age" not in df.columns:
         from src.utils import CURRENT_YEAR
+
         df = df.copy()
         df["car_age"] = CURRENT_YEAR - df["year"]
 
     scatter = ax.scatter(
-        df["car_age"], df["price_inr"] / 1_00_000,
-        c=df["car_age"], cmap="YlOrRd", alpha=0.4, s=10,
+        df["car_age"],
+        df["price_inr"] / 1_00_000,
+        c=df["car_age"],
+        cmap="YlOrRd",
+        alpha=0.4,
+        s=10,
     )
     plt.colorbar(scatter, label="Car Age (years)")
     ax.set_xlabel("Car Age (years)")
@@ -592,9 +618,7 @@ def generate_eda_plots(df: pd.DataFrame) -> None:
 # ---------------------------------------------------------------------------
 # Model Evaluation Visualizations
 # ---------------------------------------------------------------------------
-def plot_actual_vs_predicted(
-    y_true: np.ndarray, y_pred: np.ndarray
-) -> None:
+def plot_actual_vs_predicted(y_true: np.ndarray, y_pred: np.ndarray) -> None:
     """Scatter plot of actual vs predicted prices."""
     fig, ax = plt.subplots(figsize=(10, 8))
     y_true_lakhs = np.array(y_true) / 1_00_000
@@ -605,7 +629,13 @@ def plot_actual_vs_predicted(
     # Perfect prediction line
     min_val = min(y_true_lakhs.min(), y_pred_lakhs.min())
     max_val = max(y_true_lakhs.max(), y_pred_lakhs.max())
-    ax.plot([min_val, max_val], [min_val, max_val], "r--", linewidth=2, label="Perfect Prediction")
+    ax.plot(
+        [min_val, max_val],
+        [min_val, max_val],
+        "r--",
+        linewidth=2,
+        label="Perfect Prediction",
+    )
 
     ax.set_xlabel("Actual Price (₹ Lakhs)")
     ax.set_ylabel("Predicted Price (₹ Lakhs)")
@@ -617,9 +647,7 @@ def plot_actual_vs_predicted(
     logger.info("Saved: actual_vs_predicted.png")
 
 
-def plot_residual_distribution(
-    y_true: np.ndarray, y_pred: np.ndarray
-) -> None:
+def plot_residual_distribution(y_true: np.ndarray, y_pred: np.ndarray) -> None:
     """Plot the distribution of prediction residuals."""
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
@@ -664,7 +692,9 @@ def plot_feature_importance(pipeline: Pipeline, feature_names: list) -> None:
     try:
         transformed_names = preprocessor.get_feature_names_out()
     except AttributeError:
-        transformed_names = [f"feature_{i}" for i in range(len(regressor.feature_importances_))]
+        transformed_names = [
+            f"feature_{i}" for i in range(len(regressor.feature_importances_))
+        ]
 
     importances = regressor.feature_importances_
     indices = np.argsort(importances)[-20:]  # Top 20 features
@@ -728,9 +758,9 @@ def generate_shap_plots(
             background = shap.sample(X_transformed, min(50, len(X_transformed)))
             explainer = shap.KernelExplainer(regressor.predict, background)
             shap_values = explainer.shap_values(
-                X_transformed[:min(100, len(X_transformed))]
+                X_transformed[: min(100, len(X_transformed))]
             )
-            X_transformed = X_transformed[:min(100, len(X_transformed))]
+            X_transformed = X_transformed[: min(100, len(X_transformed))]
         except Exception as e:
             logger.error(f"SHAP computation failed: {e}")
             return
@@ -738,8 +768,12 @@ def generate_shap_plots(
     # 1. SHAP Feature Importance (bar plot)
     fig, ax = plt.subplots(figsize=(10, 8))
     shap.summary_plot(
-        shap_values, X_transformed, feature_names=feature_names,
-        plot_type="bar", show=False, max_display=20,
+        shap_values,
+        X_transformed,
+        feature_names=feature_names,
+        plot_type="bar",
+        show=False,
+        max_display=20,
     )
     plt.title("SHAP Feature Importance")
     plt.tight_layout()
@@ -750,8 +784,11 @@ def generate_shap_plots(
     # 2. SHAP Summary Plot (beeswarm)
     fig, ax = plt.subplots(figsize=(10, 8))
     shap.summary_plot(
-        shap_values, X_transformed, feature_names=feature_names,
-        show=False, max_display=20,
+        shap_values,
+        X_transformed,
+        feature_names=feature_names,
+        show=False,
+        max_display=20,
     )
     plt.title("SHAP Summary Plot")
     plt.tight_layout()
@@ -763,9 +800,11 @@ def generate_shap_plots(
     try:
         explanation = shap.Explanation(
             values=shap_values[0],
-            base_values=explainer.expected_value
-            if isinstance(explainer.expected_value, float)
-            else explainer.expected_value[0],
+            base_values=(
+                explainer.expected_value
+                if isinstance(explainer.expected_value, float)
+                else explainer.expected_value[0]
+            ),
             data=X_transformed[0] if hasattr(X_transformed, "__getitem__") else None,
             feature_names=feature_names,
         )
@@ -825,13 +864,10 @@ def run_evaluation(
 
 
 if __name__ == "__main__":
-    from src.data_processing import prepare_data
-    from src.data_processing import prepare_features
-    from src.utils import load_model, PIPELINE_PATH
 
     # Load data
     df = prepare_data()
-    from src.data_processing import create_features
+
     df = create_features(df)
     X, y, _ = prepare_features(df)
 
@@ -840,7 +876,6 @@ if __name__ == "__main__":
 
     # Run evaluation
     run_evaluation(pipeline, X, y, df)
-
 
 
 def create_input_dataframe(
@@ -874,19 +909,21 @@ def create_input_dataframe(
     km_per_year = km_driven / max(car_age, 0.5)
     premium_brand_flag = 1 if brand in PREMIUM_BRANDS else 0
 
-    input_data = pd.DataFrame({
-        "brand": [brand.strip()],
-        "model": [model.strip()],
-        "year": [year],
-        "car_age": [max(0, car_age)],
-        "transmission": [transmission.strip()],
-        "mileage": [mileage],
-        "fuelType": [fuel_type.strip()],
-        "mpg": [mpg],
-        "engineSize": [engine_size],
-        "km_per_year": [km_per_year],
-        "premium_brand_flag": [premium_brand_flag]
-    })
+    input_data = pd.DataFrame(
+        {
+            "brand": [brand.strip()],
+            "model": [model.strip()],
+            "year": [year],
+            "car_age": [max(0, car_age)],
+            "transmission": [transmission.strip()],
+            "mileage": [mileage],
+            "fuelType": [fuel_type.strip()],
+            "mpg": [mpg],
+            "engineSize": [engine_size],
+            "km_per_year": [km_per_year],
+            "premium_brand_flag": [premium_brand_flag],
+        }
+    )
 
     return input_data
 
@@ -943,44 +980,50 @@ def predict_price(
     if car_age <= 0:
         depreciation_rate = 0.1
     elif brand in PREMIUM_BRANDS:
-        depreciation_rate = min(0.12 * car_age, 0.75) # Premium depreciates faster, max 75%
+        depreciation_rate = min(
+            0.12 * car_age, 0.75
+        )  # Premium depreciates faster, max 75%
     else:
-        depreciation_rate = min(0.08 * car_age, 0.65) # Regular depreciates slower, max 65%
-        
+        depreciation_rate = min(
+            0.08 * car_age, 0.65
+        )  # Regular depreciates slower, max 65%
+
     original_price = predicted_inr / (1 - depreciation_rate)
-    
+
     # 4. Confidence Score (Heuristic based on age and brand)
     confidence = 96 - (car_age * 1.5)
     if brand not in PREMIUM_BRANDS:
         confidence -= 2
-    confidence = max(min(confidence, 98), 75) # Keep between 75 and 98
+    confidence = max(min(confidence, 98), 75)  # Keep between 75 and 98
 
     # 5. Recommendation System
     recommendations = []
     try:
         recommender = load_model(RECOMMENDER_PATH)
         preprocessor = pipeline.named_steps["preprocessor"]
-        
+
         # Load dataset to fetch actual car details (can be optimized in production)
         df_raw = load_and_merge_datasets()
         df_clean = clean_data(df_raw)
         df_conv = convert_price_to_inr(df_clean)
         df_features = create_features(df_conv)
-        
+
         X_trans = preprocessor.transform(input_df)
         distances, indices = recommender.kneighbors(X_trans)
-        
+
         # Get the 3 closest cars (excluding exact match if distance is 0)
         for idx in indices[0][1:]:
             sim_car = df_features.iloc[idx]
-            recommendations.append({
-                "brand": sim_car["brand"],
-                "model": sim_car["model"],
-                "year": int(sim_car["year"]),
-                "price": format_price_inr(sim_car["price_inr"]),
-                "price_raw": float(sim_car["price_inr"]),
-                "similarity": f"{100 - (distances[0][np.where(indices[0]==idx)][0] * 10):.1f}%"
-            })
+            recommendations.append(
+                {
+                    "brand": sim_car["brand"],
+                    "model": sim_car["model"],
+                    "year": int(sim_car["year"]),
+                    "price": format_price_inr(sim_car["price_inr"]),
+                    "price_raw": float(sim_car["price_inr"]),
+                    "similarity": f"{100 - (distances[0][np.where(indices[0] == idx)][0] * 10):.1f}%",
+                }
+            )
     except Exception as e:
         logger.warning(f"Failed to generate recommendations: {e}")
 
@@ -1009,9 +1052,7 @@ def predict_price(
     return result
 
 
-def batch_predict(
-    input_data: pd.DataFrame, pipeline=None
-) -> pd.DataFrame:
+def batch_predict(input_data: pd.DataFrame, pipeline=None) -> pd.DataFrame:
     """
     Make predictions for multiple cars at once.
 
@@ -1036,9 +1077,6 @@ def batch_predict(
 
     result = input_data.copy()
     result["predicted_price_inr"] = predictions
-    result["predicted_price_formatted"] = [
-        format_price_inr(p) for p in predictions
-    ]
+    result["predicted_price_formatted"] = [format_price_inr(p) for p in predictions]
 
     return result
-

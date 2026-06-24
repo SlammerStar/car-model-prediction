@@ -21,7 +21,6 @@ sys.path.insert(0, str(project_root))
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import Optional
 
 from src.prediction import predict_price
 from src.utils import (
@@ -115,9 +114,13 @@ class PredictionResponse(BaseModel):
     predicted_price_raw: float = Field(..., description="Raw predicted price in INR")
     price_range: str = Field(..., description="Estimated price range")
     original_price: str = Field(..., description="Simulated original price")
-    depreciation_percent: str = Field(..., description="Estimated depreciation percentage")
+    depreciation_percent: str = Field(
+        ..., description="Estimated depreciation percentage"
+    )
     confidence: str = Field(..., description="Prediction confidence score")
-    recommendations: list = Field(default=[], description="Similar vehicle recommendations")
+    recommendations: list = Field(
+        default=[], description="Similar vehicle recommendations"
+    )
     input_summary: dict = Field(..., description="Summary of input features used")
 
 
@@ -216,9 +219,7 @@ async def get_models_for_brand(brand: str):
         df = load_and_merge_datasets()
         brand_df = df[df["brand"].str.lower() == brand.lower()]
         if brand_df.empty:
-            raise HTTPException(
-                status_code=404, detail=f"Brand '{brand}' not found."
-            )
+            raise HTTPException(status_code=404, detail=f"Brand '{brand}' not found.")
         models = sorted(brand_df["model"].unique().tolist())
         return {"brand": brand, "models": models}
     except FileNotFoundError as e:
