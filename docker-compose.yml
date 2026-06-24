@@ -1,0 +1,68 @@
+# ============================================================================
+# Docker Compose - Intelligent Used Car Price Prediction System
+# ============================================================================
+# Orchestrates the Streamlit frontend, FastAPI backend, and MLflow server
+
+version: "3.9"
+
+services:
+  # Streamlit Frontend
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: car-price-streamlit
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./images:/app/images
+    environment:
+      - PYTHONPATH=/app
+    command: >
+      streamlit run app.py
+      --server.port=8501
+      --server.address=0.0.0.0
+      --server.headless=true
+    restart: unless-stopped
+
+  # FastAPI Backend
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: car-price-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    environment:
+      - PYTHONPATH=/app
+    command: >
+      uvicorn src.api:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+    restart: unless-stopped
+
+  # MLflow Tracking Server
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: car-price-mlflow
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./mlruns:/app/mlruns
+    environment:
+      - PYTHONPATH=/app
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:///mlflow.db
+      --default-artifact-root ./mlruns
+    restart: unless-stopped

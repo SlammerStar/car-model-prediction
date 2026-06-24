@@ -1,0 +1,54 @@
+# ============================================================================
+# .gitignore - Intelligent Used Car Price Prediction System
+# ============================================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Virtual environments
+venv/
+env/
+.env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# ML artifacts
+models/*.pkl
+mlruns/
+mlflow.db
+
+# Data (keep structure, ignore large files)
+*.csv.gz
+
+# Images (generated, can be recreated)
+# images/  # Uncomment if you don't want to track generated plots
+
+# Docker
+docker-compose.override.yml
+
+# Environment
+.env
+*.log
+
+# OS
+Thumbs.db
+.DS_Store
