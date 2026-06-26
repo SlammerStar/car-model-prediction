@@ -66,9 +66,9 @@ def render_valuation_dashboard(result: Dict[str, Any], similar_vehicles: list = 
             render_risk_assessment(result)
 
         st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
-        
+
         col3, col4 = st.columns([1.5, 1])
-        
+
         with col3:
             st.markdown(
                 f"<div style='color: {COLORS['text_primary']}; font-weight: 700; margin-bottom: 12px;'>Vehicle Specifications</div>",

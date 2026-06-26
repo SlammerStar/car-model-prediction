@@ -34,18 +34,23 @@ class ValuationPDF(FPDF):
 def generate_valuation_pdf(report: Dict[str, Any]) -> str:
     """Generates a PDF valuation report and returns the path to the temporary file."""
     import copy
+
     val = copy.deepcopy(report["valuation_report"])
     summary = report["input_summary"]
-    
+
     # fpdf2's default helvetica doesn't support the Rupee symbol
     def sanitize(text):
         if isinstance(text, str):
             return text.replace("₹", "Rs. ")
         return text
-        
+
     val["estimated_market_value"] = sanitize(val["estimated_market_value"])
-    val["estimated_market_range"]["lower_bound"] = sanitize(val["estimated_market_range"]["lower_bound"])
-    val["estimated_market_range"]["upper_bound"] = sanitize(val["estimated_market_range"]["upper_bound"])
+    val["estimated_market_range"]["lower_bound"] = sanitize(
+        val["estimated_market_range"]["lower_bound"]
+    )
+    val["estimated_market_range"]["upper_bound"] = sanitize(
+        val["estimated_market_range"]["upper_bound"]
+    )
     val["ai_summary"] = sanitize(val["ai_summary"])
 
     pdf = ValuationPDF()
@@ -137,7 +142,7 @@ def generate_valuation_pdf(report: Dict[str, Any]) -> str:
 
     # Ensure we drop below both columns before continuing
     current_y = pdf.get_y()
-    specs_end_y = y_start + 24 # 4 lines of specs
+    specs_end_y = y_start + 24  # 4 lines of specs
     if current_y < specs_end_y:
         pdf.set_y(specs_end_y)
 

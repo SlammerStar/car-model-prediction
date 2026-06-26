@@ -40,12 +40,12 @@ class ShapExplanationProvider(BaseExplanationProvider):
             self.explainer = self.shap.TreeExplainer(model)
         except Exception:
             background = self.shap.sample(X, min(50, len(X)))
-            
+
             def predict_wrapper(data):
                 if isinstance(data, np.ndarray):
                     data = pd.DataFrame(data, columns=X.columns)
                 return model.predict(data)
-                
+
             self.explainer = self.shap.KernelExplainer(predict_wrapper, background)
 
     def explain(self, model, X: pd.DataFrame) -> Tuple[float, Dict[str, float]]:

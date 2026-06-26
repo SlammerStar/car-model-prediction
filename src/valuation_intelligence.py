@@ -214,8 +214,10 @@ class ValuationIntelligenceEngine:
         # Determine the correct dataframe to pass based on expected features
         if hasattr(model_pipeline, "feature_names_in_"):
             expected_features = list(model_pipeline.feature_names_in_)
-            missing_cols = [col for col in expected_features if col not in input_features.columns]
-            
+            missing_cols = [
+                col for col in expected_features if col not in input_features.columns
+            ]
+
             if not missing_cols:
                 predict_df = input_features[expected_features]
             else:
