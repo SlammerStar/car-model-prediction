@@ -897,6 +897,7 @@ def create_input_dataframe(
             "car_age": [max(0, car_age)],
             "transmission": [transmission.strip()],
             "mileage": [mileage],
+            "km_driven": [km_driven],
             "fuelType": [fuel_type.strip()],
             "mpg": [mpg],
             "engineSize": [engine_size],
