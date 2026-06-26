@@ -69,7 +69,7 @@ def render_hero_card(report: Dict[str, Any]):
                 </div>
             </div>
         </div>
-        
+
         <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid {COLORS['border']}; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; position: relative; z-index: 1;">
             <div>
                 <div style="color: {COLORS['text_secondary']}; font-size: 0.8rem; margin-bottom: 4px;">Market Position</div>
