@@ -60,7 +60,7 @@ PREMIUM_BRANDS = [
 ]
 
 # Feature column definitions
-CATEGORICAL_FEATURES = ["brand", "model", "transmission", "fuelType"]
+CATEGORICAL_FEATURES = ["brand", "model", "transmission", "fuelType", "vehicle_segment"]
 NUMERICAL_FEATURES = [
     "year",
     "car_age",
@@ -74,9 +74,9 @@ TARGET_COLUMN = "price_inr"
 
 # Model save paths
 MODEL_PATH = MODELS_DIR / "model.pkl"
-PIPELINE_PATH = MODELS_DIR / "pipeline.pkl"
+PIPELINE_PATH = MODELS_DIR / "production" / "pipeline.pkl"
 RECOMMENDER_PATH = MODELS_DIR / "recommender.pkl"
-METADATA_PATH = MODELS_DIR / "metadata.json"
+METADATA_PATH = MODELS_DIR / "production" / "metadata.json"
 
 
 # ---------------------------------------------------------------------------

@@ -34,3 +34,7 @@ httpx>=0.25.0
 # Code Quality
 flake8>=6.1.0
 black>=23.0.0
+xgboost
+lightgbm
+catboost
+optuna

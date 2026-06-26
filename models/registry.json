@@ -1,0 +1,62 @@
+{
+    "production_model": {
+        "model_name": "XGBoost",
+        "timestamp": "2026-06-26T13:41:55.826120",
+        "metrics": {
+            "cv_r2_mean": 0.9209754824638366,
+            "cv_r2_std": 0.00504048560501347,
+            "cv_mae_mean": 109122.35602237986,
+            "cv_rmse_mean": 227594.53518295469,
+            "r2": 0.9070380330085754,
+            "mae": 107411.10425458007,
+            "rmse": 248543.74446430628,
+            "mape": 0.1681455900899199,
+            "median_ae": 53964.3125,
+            "train_time_sec": 1.31361722946167,
+            "inference_time_sec": 0.02358102798461914
+        },
+        "dataset_version": "unknown",
+        "feature_version": "v1.0",
+        "supported_features": [
+            "brand",
+            "model",
+            "transmission",
+            "fuelType",
+            "year",
+            "mileage",
+            "engineSize",
+            "luxury_brand_flag"
+        ]
+    },
+    "history": [
+        {
+            "model_name": "XGBoost",
+            "timestamp": "2026-06-26T13:41:55.826120",
+            "metrics": {
+                "cv_r2_mean": 0.9209754824638366,
+                "cv_r2_std": 0.00504048560501347,
+                "cv_mae_mean": 109122.35602237986,
+                "cv_rmse_mean": 227594.53518295469,
+                "r2": 0.9070380330085754,
+                "mae": 107411.10425458007,
+                "rmse": 248543.74446430628,
+                "mape": 0.1681455900899199,
+                "median_ae": 53964.3125,
+                "train_time_sec": 1.31361722946167,
+                "inference_time_sec": 0.02358102798461914
+            },
+            "dataset_version": "unknown",
+            "feature_version": "v1.0",
+            "supported_features": [
+                "brand",
+                "model",
+                "transmission",
+                "fuelType",
+                "year",
+                "mileage",
+                "engineSize",
+                "luxury_brand_flag"
+            ]
+        }
+    ]
+}

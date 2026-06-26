@@ -924,92 +924,61 @@ def predict_price(
     pipeline=None,
 ) -> Dict[str, Any]:
     """
-    Make a price prediction for a used car.
-
-    Args:
-        brand: Car brand.
-        model: Car model.
-        year: Manufacturing year.
-        transmission: Transmission type.
-        mileage: Odometer reading in miles.
-        fuel_type: Fuel type.
-        mpg: Miles per gallon.
-        engine_size: Engine size in litres.
-        pipeline: Pre-loaded pipeline (optional, loaded from disk if None).
-
-    Returns:
-        Dictionary with prediction results:
-            - predicted_price: Formatted price string (e.g., '₹12.45 Lakhs')
-            - predicted_price_raw: Raw price in INR
-            - input_summary: Summary of input features
+    Make a price prediction for a used car using the production Model Registry.
     """
     if pipeline is None:
         pipeline = load_model(PIPELINE_PATH)
 
+    # Load market statistics to initialize Feature Engineer
+    import joblib
+    from src.utils import MODELS_DIR
+
+    stats_path = MODELS_DIR / "production" / "market_stats.pkl"
+    try:
+        stats = joblib.load(stats_path)
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f"Missing market_stats.pkl at {stats_path}. Run Experiment Manager first."
+        )
+
+    from src.feature_engineering import MarketFeatureEngineer
+
+    engineer = MarketFeatureEngineer(stats)
+
+    # 1. Create base input dataframe
     input_df = create_input_dataframe(
         brand, model, year, transmission, mileage, fuel_type, mpg, engine_size
     )
 
-    # 1. Price Prediction
-    predicted_inr = pipeline.predict(input_df)[0]
+    # 2. Engineer full market features
+    input_features_df = engineer.engineer_features(input_df)
+
+    # 3. Price Prediction
+    # The pipeline handles matching the features via its ColumnTransformer
+    predicted_inr = pipeline.predict(input_features_df)[0]
     predicted_inr = max(0, predicted_inr)
 
-    # 2. Estimate Price Range (±4% for premium, ±6% for regular)
+    # 4. Estimate Price Range (±4% for premium, ±6% for regular)
     variance = 0.04 if brand in PREMIUM_BRANDS else 0.06
     lower_bound = predicted_inr * (1 - variance)
     upper_bound = predicted_inr * (1 + variance)
 
-    # 3. Simulate Original Price (Assuming typical depreciation)
+    # 5. Original Price Simulation
     car_age = CURRENT_YEAR - year
-    if car_age <= 0:
-        depreciation_rate = 0.1
-    elif brand in PREMIUM_BRANDS:
-        depreciation_rate = min(
-            0.12 * car_age, 0.75
-        )  # Premium depreciates faster, max 75%
-    else:
-        depreciation_rate = min(
-            0.08 * car_age, 0.65
-        )  # Regular depreciates slower, max 65%
-
+    depreciation_rate = stats.get_brand_annual_depreciation_rate(brand) * car_age
+    depreciation_rate = max(
+        0.1, min(depreciation_rate, 0.75)
+    )  # Cap between 10% and 75%
     original_price = predicted_inr / (1 - depreciation_rate)
 
-    # 4. Confidence Score (Heuristic based on age and brand)
+    # 6. Confidence Score
     confidence = 96 - (car_age * 1.5)
     if brand not in PREMIUM_BRANDS:
         confidence -= 2
-    confidence = max(min(confidence, 98), 75)  # Keep between 75 and 98
+    confidence = max(min(confidence, 98), 75)
 
-    # 5. Recommendation System
+    # 7. Recommendations (Disabled for now as the recommender hasn't been migrated)
     recommendations = []
-    try:
-        recommender = load_model(RECOMMENDER_PATH)
-        preprocessor = pipeline.named_steps["preprocessor"]
-
-        # Load dataset to fetch actual car details (can be optimized in production)
-        df_raw = load_and_merge_datasets()
-        df_clean = clean_data(df_raw)
-        df_conv = convert_price_to_inr(df_clean)
-        df_features = create_features(df_conv)
-
-        X_trans = preprocessor.transform(input_df)
-        distances, indices = recommender.kneighbors(X_trans)
-
-        # Get the 3 closest cars (excluding exact match if distance is 0)
-        for idx in indices[0][1:]:
-            sim_car = df_features.iloc[idx]
-            recommendations.append(
-                {
-                    "brand": sim_car["brand"],
-                    "model": sim_car["model"],
-                    "year": int(sim_car["year"]),
-                    "price": format_price_inr(sim_car["price_inr"]),
-                    "price_raw": float(sim_car["price_inr"]),
-                    "similarity": f"{100 - (distances[0][np.where(indices[0] == idx)][0] * 10):.1f}%",
-                }
-            )
-    except Exception as e:
-        logger.warning(f"Failed to generate recommendations: {e}")
 
     result = {
         "predicted_price": format_price_inr(predicted_inr),
@@ -1051,16 +1020,32 @@ def batch_predict(input_data: pd.DataFrame, pipeline=None) -> pd.DataFrame:
     if pipeline is None:
         pipeline = load_model(PIPELINE_PATH)
 
-    # Ensure car_age is present
-    if "car_age" not in input_data.columns and "year" in input_data.columns:
-        input_data = input_data.copy()
-        input_data["car_age"] = CURRENT_YEAR - input_data["year"]
+    # Load market statistics to initialize Feature Engineer
+    import joblib
+    from src.utils import MODELS_DIR
 
-    predictions = pipeline.predict(input_data)
-    predictions = np.maximum(predictions, 0)  # Ensure non-negative
+    stats_path = MODELS_DIR / "production" / "market_stats.pkl"
+    try:
+        stats = joblib.load(stats_path)
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f"Missing market_stats.pkl at {stats_path}. Run Experiment Manager first."
+        )
 
-    result = input_data.copy()
-    result["predicted_price_inr"] = predictions
-    result["predicted_price_formatted"] = [format_price_inr(p) for p in predictions]
+    from src.feature_engineering import MarketFeatureEngineer
 
-    return result
+    engineer = MarketFeatureEngineer(stats)
+
+    input_data = input_data.copy()
+
+    # Engineer full market features
+    input_features_df = engineer.engineer_features(input_data)
+
+    predictions = pipeline.predict(input_features_df)
+
+    input_data["predicted_price_inr"] = np.maximum(0, predictions)
+    input_data["predicted_price_formatted"] = input_data["predicted_price_inr"].apply(
+        format_price_inr
+    )
+
+    return input_data

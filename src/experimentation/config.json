@@ -1,0 +1,47 @@
+{
+    "experiment_name": "driveiq_phase5_experiments",
+    "random_seed": 42,
+    "validation": {
+        "n_splits": 5,
+        "shuffle": true
+    },
+    "optimization": {
+        "n_trials": 20,
+        "timeout_seconds": 600,
+        "n_jobs": 1
+    },
+    "feature_subsets": {
+        "baseline": [
+            "brand", "model", "transmission", "fuelType",
+            "year", "mileage", "engineSize", "luxury_brand_flag"
+        ],
+        "full_engineered": [
+            "brand", "model", "transmission", "fuelType",
+            "car_age", "km_per_year", "luxury_brand_flag",
+            "vehicle_segment", "engine_performance_score", "fuel_efficiency_score",
+            "owner_risk_score", "seller_type_score",
+            "brand_popularity", "variant_popularity", "fuel_demand_score",
+            "transmission_popularity", "configuration_scarcity_score",
+            "market_stability_score", "market_liquidity_score",
+            "brand_resale_retention_score", "historical_brand_depreciation",
+            "age_based_depreciation", "usage_based_depreciation", "remaining_life_index"
+        ],
+        "pruned_engineered": [
+            "brand", "model", "transmission", "fuelType",
+            "car_age", "km_per_year",
+            "vehicle_segment", "engine_performance_score",
+            "seller_type_score",
+            "market_liquidity_score", "configuration_scarcity_score",
+            "age_based_depreciation", "remaining_life_index"
+        ]
+    },
+    "models_to_evaluate": [
+        "DecisionTree",
+        "RandomForest",
+        "ExtraTrees",
+        "GradientBoosting",
+        "XGBoost",
+        "LightGBM",
+        "CatBoost"
+    ]
+}
