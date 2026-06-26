@@ -81,6 +81,7 @@ OWNER_NORMALIZE = {
 # Parsing Utilities
 # ---------------------------------------------------------------------------
 
+
 def parse_brand_model(name: str) -> Tuple[str, str]:
     """
     Extract brand and model from a combined name string.
@@ -183,6 +184,7 @@ def parse_mileage_kmpl(value) -> Optional[float]:
 # Dataset A: CarDekho v3 Loader
 # ---------------------------------------------------------------------------
 
+
 def load_cardekho_v3(filepath: Path) -> pd.DataFrame:
     """
     Load and standardize the CarDekho v3 dataset.
@@ -207,27 +209,27 @@ def load_cardekho_v3(filepath: Path) -> pd.DataFrame:
 
     # Parse numeric fields from strings
     df["mileage_kmpl"] = df["mileage"].apply(parse_mileage_kmpl)
-    df["engine_cc"] = df["engine"].apply(
-        lambda x: parse_numeric_with_unit(x, "CC")
-    )
+    df["engine_cc"] = df["engine"].apply(lambda x: parse_numeric_with_unit(x, "CC"))
     df["max_power_bhp"] = df["max_power"].apply(
         lambda x: parse_numeric_with_unit(x, "bhp")
     )
 
     # Rename columns to unified schema
-    df = df.rename(columns={
-        "selling_price": "selling_price",
-        "km_driven": "km_driven",
-        "fuel": "fuel_type",
-        "transmission": "transmission",
-        "owner": "owner_type",
-        "seats": "seats",
-    })
+    df = df.rename(
+        columns={
+            "selling_price": "selling_price",
+            "km_driven": "km_driven",
+            "fuel": "fuel_type",
+            "transmission": "transmission",
+            "owner": "owner_type",
+            "seats": "seats",
+        }
+    )
 
     # Normalize categorical values
     df["fuel_type"] = df["fuel_type"].map(FUEL_NORMALIZE).fillna(df["fuel_type"])
-    df["transmission"] = df["transmission"].map(TRANSMISSION_NORMALIZE).fillna(
-        df["transmission"]
+    df["transmission"] = (
+        df["transmission"].map(TRANSMISSION_NORMALIZE).fillna(df["transmission"])
     )
     df["owner_type"] = df["owner_type"].map(OWNER_NORMALIZE).fillna(df["owner_type"])
 
@@ -238,10 +240,21 @@ def load_cardekho_v3(filepath: Path) -> pd.DataFrame:
 
     # Select unified columns
     unified_cols = [
-        "brand", "model", "year", "selling_price", "km_driven",
-        "fuel_type", "transmission", "owner_type", "mileage_kmpl",
-        "engine_cc", "max_power_bhp", "seats", "seller_type",
-        "location", "source",
+        "brand",
+        "model",
+        "year",
+        "selling_price",
+        "km_driven",
+        "fuel_type",
+        "transmission",
+        "owner_type",
+        "mileage_kmpl",
+        "engine_cc",
+        "max_power_bhp",
+        "seats",
+        "seller_type",
+        "location",
+        "source",
     ]
     df = df[[c for c in unified_cols if c in df.columns]].copy()
 
@@ -252,6 +265,7 @@ def load_cardekho_v3(filepath: Path) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Dataset B: Kasliwal Multi-City Loader
 # ---------------------------------------------------------------------------
+
 
 def load_kasliwal_multicity(filepath: Path) -> pd.DataFrame:
     """
@@ -284,28 +298,32 @@ def load_kasliwal_multicity(filepath: Path) -> pd.DataFrame:
 
     # Parse numeric fields
     df["mileage_kmpl"] = df["Mileage"].apply(parse_mileage_kmpl)
-    df["engine_cc"] = df["Engine"].apply(
-        lambda x: parse_numeric_with_unit(x, "CC")
-    )
+    df["engine_cc"] = df["Engine"].apply(lambda x: parse_numeric_with_unit(x, "CC"))
     df["max_power_bhp"] = df["Power"].apply(
-        lambda x: parse_numeric_with_unit(x, "bhp") if isinstance(x, str) and x.strip().lower() != "null" else None
+        lambda x: (
+            parse_numeric_with_unit(x, "bhp")
+            if isinstance(x, str) and x.strip().lower() != "null"
+            else None
+        )
     )
 
     # Rename columns to unified schema
-    df = df.rename(columns={
-        "Year": "year",
-        "Kilometers_Driven": "km_driven",
-        "Fuel_Type": "fuel_type",
-        "Transmission": "transmission",
-        "Owner_Type": "owner_type",
-        "Seats": "seats",
-        "Location": "location",
-    })
+    df = df.rename(
+        columns={
+            "Year": "year",
+            "Kilometers_Driven": "km_driven",
+            "Fuel_Type": "fuel_type",
+            "Transmission": "transmission",
+            "Owner_Type": "owner_type",
+            "Seats": "seats",
+            "Location": "location",
+        }
+    )
 
     # Normalize categorical values
     df["fuel_type"] = df["fuel_type"].map(FUEL_NORMALIZE).fillna(df["fuel_type"])
-    df["transmission"] = df["transmission"].map(TRANSMISSION_NORMALIZE).fillna(
-        df["transmission"]
+    df["transmission"] = (
+        df["transmission"].map(TRANSMISSION_NORMALIZE).fillna(df["transmission"])
     )
     df["owner_type"] = df["owner_type"].map(OWNER_NORMALIZE).fillna(df["owner_type"])
 
@@ -315,10 +333,21 @@ def load_kasliwal_multicity(filepath: Path) -> pd.DataFrame:
 
     # Select unified columns
     unified_cols = [
-        "brand", "model", "year", "selling_price", "km_driven",
-        "fuel_type", "transmission", "owner_type", "mileage_kmpl",
-        "engine_cc", "max_power_bhp", "seats", "seller_type",
-        "location", "source",
+        "brand",
+        "model",
+        "year",
+        "selling_price",
+        "km_driven",
+        "fuel_type",
+        "transmission",
+        "owner_type",
+        "mileage_kmpl",
+        "engine_cc",
+        "max_power_bhp",
+        "seats",
+        "seller_type",
+        "location",
+        "source",
     ]
     df = df[[c for c in unified_cols if c in df.columns]].copy()
 
@@ -329,6 +358,7 @@ def load_kasliwal_multicity(filepath: Path) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Unified Data Engineering Pipeline
 # ---------------------------------------------------------------------------
+
 
 def load_and_merge_datasets() -> pd.DataFrame:
     """
@@ -402,8 +432,15 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     logger.info(f"  Removed {dupes_removed} exact duplicates")
 
     # Step 2: Remove records missing critical fields
-    critical_cols = ["brand", "model", "year", "selling_price", "km_driven",
-                     "fuel_type", "transmission"]
+    critical_cols = [
+        "brand",
+        "model",
+        "year",
+        "selling_price",
+        "km_driven",
+        "fuel_type",
+        "transmission",
+    ]
     before = len(df)
     df = df.dropna(subset=critical_cols)
     df = df[df["brand"] != "Unknown"]
@@ -442,17 +479,21 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
                 )
 
     # Step 7: Standardize brand names
-    df["brand"] = df["brand"].apply(
-        lambda x: BRAND_NORMALIZE.get(x, x)
-    )
+    df["brand"] = df["brand"].apply(lambda x: BRAND_NORMALIZE.get(x, x))
 
     # Step 8: Remove near-duplicate listings (same brand+model+year+km within 5%)
     before = len(df)
     df = df.sort_values("selling_price")
     df["_dedup_key"] = (
-        df["brand"] + "|" + df["model"] + "|" +
-        df["year"].astype(str) + "|" +
-        df["fuel_type"] + "|" + df["transmission"]
+        df["brand"]
+        + "|"
+        + df["model"]
+        + "|"
+        + df["year"].astype(str)
+        + "|"
+        + df["fuel_type"]
+        + "|"
+        + df["transmission"]
     )
     # For same key, remove records with km_driven within 2% and price within 5%
     mask = pd.Series(True, index=df.index)
@@ -462,7 +503,7 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
         km = row["km_driven"]
         price = row["selling_price"]
         if key in seen:
-            for (prev_km, prev_price) in seen[key]:
+            for prev_km, prev_price in seen[key]:
                 km_close = abs(km - prev_km) < max(500, 0.02 * prev_km)
                 price_close = abs(price - prev_price) < 0.05 * prev_price
                 if km_close and price_close:
@@ -493,8 +534,10 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     df = pd.concat(clean_frames, ignore_index=True)
     logger.info(f"  Removed {before - len(df)} brand-level price outliers")
 
-    logger.info(f"Cleaning complete: {len(df)} records remaining "
-                f"({initial_rows - len(df)} removed total)")
+    logger.info(
+        f"Cleaning complete: {len(df)} records remaining "
+        f"({initial_rows - len(df)} removed total)"
+    )
     return df
 
 
@@ -590,6 +633,7 @@ def prepare_data() -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Feature / Target Splitting
 # ---------------------------------------------------------------------------
+
 
 def get_feature_target_split(
     df: pd.DataFrame,

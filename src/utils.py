@@ -45,9 +45,19 @@ TEST_SIZE = 0.2
 # Indian Market Configuration (DRIVEIQ 2.0)
 # ---------------------------------------------------------------------------
 # Premium brands in the Indian market — used for premium_brand_flag feature
-PREMIUM_BRANDS = ["Audi", "BMW", "Mercedes", "Jaguar", "Land Rover",
-                  "Lexus", "Volvo", "Porsche", "Mini", "Bentley",
-                  "Lamborghini"]
+PREMIUM_BRANDS = [
+    "Audi",
+    "BMW",
+    "Mercedes",
+    "Jaguar",
+    "Land Rover",
+    "Lexus",
+    "Volvo",
+    "Porsche",
+    "Mini",
+    "Bentley",
+    "Lamborghini",
+]
 
 # Feature column definitions
 CATEGORICAL_FEATURES = ["brand", "model", "transmission", "fuelType"]
