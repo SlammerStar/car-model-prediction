@@ -949,41 +949,47 @@ def predict_price(
     # 2. Engineer full market features
     input_features_df = engineer.engineer_features(input_df)
 
-    # 3. Price Prediction
-    # The pipeline handles matching the features via its ColumnTransformer
-    predicted_inr = pipeline.predict(input_features_df)[0]
-    predicted_inr = max(0, predicted_inr)
+    # 3. Instantiate Engines
+    from src.explanation_engine import ShapExplanationProvider, ExplanationEngine
+    from src.valuation_intelligence import ValuationIntelligenceEngine
 
-    # 4. Estimate Price Range (±4% for premium, ±6% for regular)
-    variance = 0.04 if brand in PREMIUM_BRANDS else 0.06
-    lower_bound = predicted_inr * (1 - variance)
-    upper_bound = predicted_inr * (1 + variance)
+    # We load the config and engines
+    shap_provider = ShapExplanationProvider()
 
-    # 5. Original Price Simulation
+    import json
+
+    with open("src/valuation_config.json", "r") as f:
+        config = json.load(f)
+
+    explanation_engine = ExplanationEngine(shap_provider, config)
+    valuation_engine = ValuationIntelligenceEngine(
+        config_path="src/valuation_config.json",
+        explanation_engine=explanation_engine,
+        knowledge_engine=None,  # We could pass the vehicle knowledge engine here later
+    )
+
+    # 4. Generate Comprehensive Report
+    report = valuation_engine.generate_valuation_report(
+        model_pipeline=pipeline, input_data=input_df, input_features=input_features_df
+    )
+
+    # 5. Original Price Simulation (kept for backward compatibility of UI)
     car_age = CURRENT_YEAR - year
     depreciation_rate = stats.get_brand_annual_depreciation_rate(brand) * car_age
-    depreciation_rate = max(
-        0.1, min(depreciation_rate, 0.75)
-    )  # Cap between 10% and 75%
-    original_price = predicted_inr / (1 - depreciation_rate)
+    depreciation_rate = max(0.1, min(depreciation_rate, 0.75))
+    original_price = report["estimated_market_value_raw"] / (1 - depreciation_rate)
 
-    # 6. Confidence Score
-    confidence = 96 - (car_age * 1.5)
-    if brand not in PREMIUM_BRANDS:
-        confidence -= 2
-    confidence = max(min(confidence, 98), 75)
-
-    # 7. Recommendations (Disabled for now as the recommender hasn't been migrated)
-    recommendations = []
-
+    # Reconstruct result maintaining backward compatibility for the UI
     result = {
-        "predicted_price": format_price_inr(predicted_inr),
-        "predicted_price_raw": round(predicted_inr, 2),
-        "price_range": f"{format_price_inr(lower_bound)} - {format_price_inr(upper_bound)}",
+        "predicted_price": report["estimated_market_value"],
+        "predicted_price_raw": round(report["estimated_market_value_raw"], 2),
+        "price_range": f"{report['estimated_market_range']['lower_bound']} - {report['estimated_market_range']['upper_bound']}",
         "original_price": format_price_inr(original_price),
         "depreciation_percent": f"{depreciation_rate * 100:.0f}%",
-        "confidence": f"{confidence:.0f}%",
-        "recommendations": recommendations,
+        "confidence": f"{report['confidence']['score']:.0f}%",
+        "recommendations": [],  # Backward compatibility array
+        # New Valuation Intelligence fields
+        "valuation_report": report,
         "input_summary": {
             "brand": brand,
             "model": model,
@@ -997,7 +1003,9 @@ def predict_price(
         },
     }
 
-    logger.info(f"Prediction: {result['predicted_price']} for {brand} {model} ({year})")
+    logger.info(
+        f"Valuation Generated: {result['predicted_price']} for {brand} {model} ({year})"
+    )
     return result
 
 

@@ -1,0 +1,81 @@
+{
+    "market_position_thresholds": {
+        "undervalued_max": -0.05,
+        "fairly_priced_max": 0.05,
+        "slightly_overpriced_max": 0.15
+    },
+    "confidence_thresholds": {
+        "high_min": 85,
+        "medium_min": 60
+    },
+    "risk_thresholds": {
+        "ownership_risk": {
+            "high_min": 0.7,
+            "medium_min": 0.4
+        },
+        "market_risk": {
+            "high_min": 0.6,
+            "medium_min": 0.3
+        },
+        "maintenance_risk": {
+            "high_min": 0.7,
+            "medium_min": 0.4
+        }
+    },
+    "recommendation_matrix": {
+        "Excellent Buy": {
+            "market_position": ["Undervalued"],
+            "confidence": ["High", "Medium"],
+            "max_ownership_risk": "Low"
+        },
+        "Good Buy": {
+            "market_position": ["Fairly Priced", "Undervalued"],
+            "confidence": ["High", "Medium"],
+            "max_ownership_risk": "Medium"
+        },
+        "Fair Purchase": {
+            "market_position": ["Fairly Priced", "Slightly Overpriced"],
+            "confidence": ["High", "Medium", "Low"],
+            "max_ownership_risk": "High"
+        },
+        "Negotiate": {
+            "market_position": ["Slightly Overpriced", "Overpriced"],
+            "confidence": ["High", "Medium"],
+            "max_ownership_risk": "Medium"
+        },
+        "Avoid": {
+            "market_position": ["Overpriced"],
+            "confidence": ["Low", "Medium", "High"],
+            "max_ownership_risk": "High"
+        }
+    },
+    "feature_translation_dictionary": {
+        "brand": "Vehicle Brand",
+        "model": "Vehicle Model",
+        "transmission": "Transmission Type",
+        "fuelType": "Fuel Type",
+        "year": "Manufacturing Year",
+        "car_age": "Vehicle Age",
+        "mileage": "Odometer Mileage",
+        "engineSize": "Engine Capacity",
+        "km_per_year": "Annual Usage Rate",
+        "luxury_brand_flag": "Premium Brand Status",
+        "vehicle_segment": "Vehicle Segment",
+        "engine_performance_score": "Engine Performance",
+        "fuel_efficiency_score": "Fuel Efficiency",
+        "owner_risk_score": "Ownership History Risk",
+        "seller_type_score": "Seller Profile Reliability",
+        "brand_popularity": "Brand Market Demand",
+        "variant_popularity": "Variant Popularity",
+        "fuel_demand_score": "Fuel Type Demand",
+        "transmission_popularity": "Transmission Market Preference",
+        "configuration_scarcity_score": "Configuration Rarity",
+        "market_stability_score": "Price Stability",
+        "market_liquidity_score": "Market Liquidity",
+        "brand_resale_retention_score": "Brand Resale Value",
+        "historical_brand_depreciation": "Historical Depreciation",
+        "age_based_depreciation": "Age-related Depreciation",
+        "usage_based_depreciation": "Usage-related Depreciation",
+        "remaining_life_index": "Remaining Usable Life"
+    }
+}
