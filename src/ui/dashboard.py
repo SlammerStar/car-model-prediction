@@ -65,14 +65,20 @@ def render_valuation_dashboard(result: Dict[str, Any], similar_vehicles: list = 
             )
             render_risk_assessment(result)
 
+        st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
+        
+        col3, col4 = st.columns([1.5, 1])
+        
+        with col3:
             st.markdown(
-                f"<div style='color: {COLORS['text_primary']}; font-weight: 700; margin-bottom: 12px; margin-top: 20px;'>Vehicle Specifications</div>",
+                f"<div style='color: {COLORS['text_primary']}; font-weight: 700; margin-bottom: 12px;'>Vehicle Specifications</div>",
                 unsafe_allow_html=True,
             )
             render_spec_card(result["input_summary"])
 
+        with col4:
             st.markdown(
-                f"<div style='color: {COLORS['text_primary']}; font-weight: 700; margin-bottom: 12px; margin-top: 20px;'>Estimated 5-Year Ownership</div>",
+                f"<div style='color: {COLORS['text_primary']}; font-weight: 700; margin-bottom: 12px;'>Estimated 5-Year Ownership</div>",
                 unsafe_allow_html=True,
             )
             render_ownership_costs(result)
@@ -119,18 +125,15 @@ def render_valuation_dashboard(result: Dict[str, Any], similar_vehicles: list = 
 
     col_export, col_empty = st.columns([1, 3])
     with col_export:
-        if st.button(
-            "Download Professional PDF Report", type="primary", use_container_width=True
-        ):
-            with st.spinner("Generating PDF..."):
-                pdf_path = generate_valuation_pdf(result)
-                with open(pdf_path, "rb") as f:
-                    pdf_bytes = f.read()
+        pdf_path = generate_valuation_pdf(result)
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
 
-                st.download_button(
-                    label="Click to Save PDF",
-                    data=pdf_bytes,
-                    file_name=f"DRIVEIQ_Valuation_{result['input_summary']['brand']}_{result['input_summary']['model']}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True,
-                )
+        st.download_button(
+            label="Download Professional PDF Report",
+            data=pdf_bytes,
+            file_name=f"DRIVEIQ_Valuation_{result['input_summary']['brand']}_{result['input_summary']['model']}.pdf",
+            mime="application/pdf",
+            type="primary",
+            use_container_width=True,
+        )

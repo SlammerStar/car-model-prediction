@@ -211,8 +211,28 @@ class ValuationIntelligenceEngine:
         """
         Generate a complete structured valuation report.
         """
-        # 1. Prediction
-        predicted_price = model_pipeline.predict(input_features)[0]
+        # Determine the correct dataframe to pass based on expected features
+        if hasattr(model_pipeline, "feature_names_in_"):
+            expected_features = list(model_pipeline.feature_names_in_)
+            missing_cols = [col for col in expected_features if col not in input_features.columns]
+            
+            if not missing_cols:
+                predict_df = input_features[expected_features]
+            else:
+                predict_df = input_features
+        else:
+            predict_df = input_features
+
+        try:
+            predicted_price = model_pipeline.predict(predict_df)[0]
+        except ValueError as e:
+            if "features as input" in str(e):
+                # Fallback to base input data
+                predict_df = input_data
+                predicted_price = model_pipeline.predict(predict_df)[0]
+            else:
+                raise e
+
         predicted_price = max(0.0, float(predicted_price))
 
         brand = input_data["brand"].iloc[0]
@@ -222,7 +242,7 @@ class ValuationIntelligenceEngine:
         explanation = {}
         if self.explanation_engine:
             explanation = self.explanation_engine.explain_prediction(
-                model_pipeline, input_features
+                model_pipeline, predict_df
             )
 
         # 3. Confidence & Ranges

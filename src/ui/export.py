@@ -33,8 +33,20 @@ class ValuationPDF(FPDF):
 
 def generate_valuation_pdf(report: Dict[str, Any]) -> str:
     """Generates a PDF valuation report and returns the path to the temporary file."""
-    val = report["valuation_report"]
+    import copy
+    val = copy.deepcopy(report["valuation_report"])
     summary = report["input_summary"]
+    
+    # fpdf2's default helvetica doesn't support the Rupee symbol
+    def sanitize(text):
+        if isinstance(text, str):
+            return text.replace("₹", "Rs. ")
+        return text
+        
+    val["estimated_market_value"] = sanitize(val["estimated_market_value"])
+    val["estimated_market_range"]["lower_bound"] = sanitize(val["estimated_market_range"]["lower_bound"])
+    val["estimated_market_range"]["upper_bound"] = sanitize(val["estimated_market_range"]["upper_bound"])
+    val["ai_summary"] = sanitize(val["ai_summary"])
 
     pdf = ValuationPDF()
     pdf.add_page()
@@ -117,13 +129,17 @@ def generate_valuation_pdf(report: Dict[str, Any]) -> str:
 
     # Reset Y for Risks
     pdf.set_y(y_start)
-    pdf.set_x(105)  # LMARGIN is 10 + 90 = 100 + 5 padding
 
     for r_type, r_level in val["risk_assessment"].items():
+        pdf.set_x(105)  # LMARGIN is 10 + 90 = 100 + 5 padding
         pdf.cell(50, 6, f"{r_type}:")
-        pdf.cell(40, 6, r_level)
-        pdf.set_x(105)
-        pdf.set_y(pdf.get_y() + 6)
+        pdf.cell(40, 6, str(r_level), new_x="LMARGIN", new_y="NEXT")
+
+    # Ensure we drop below both columns before continuing
+    current_y = pdf.get_y()
+    specs_end_y = y_start + 24 # 4 lines of specs
+    if current_y < specs_end_y:
+        pdf.set_y(specs_end_y)
 
     pdf.ln(10)
 
