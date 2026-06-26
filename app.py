@@ -7,7 +7,6 @@ advanced machine learning pipelines, and market analytics.
 
 import sys
 from pathlib import Path
-import random
 
 # Ensure project root is on the path
 project_root = Path(__file__).resolve().parent
@@ -15,10 +14,8 @@ sys.path.insert(0, str(project_root))
 
 import streamlit as st
 import pandas as pd
-import numpy as np
 import json
 import plotly.express as px
-import plotly.graph_objects as go
 
 from src.utils import (
     PIPELINE_PATH,
@@ -939,216 +936,11 @@ if page == "Predict Price":
                     engine_size=engine_size,
                     pipeline=pipeline,
                 )
-
                 st.divider()
 
-                # Results: 3 cards
-                res1, res2, res3 = st.columns([1.2, 1, 1])
+                from src.ui.dashboard import render_valuation_dashboard
 
-                # ── Card 1: Estimated Market Value ──
-                with res1:
-                    conf_val = int(result["confidence"].replace("%", ""))
-                    conf_color = (
-                        "#00FF88"
-                        if conf_val >= 85
-                        else ("#FFC857" if conf_val >= 75 else "#FF3B30")
-                    )
-
-                    st.markdown(
-                        f"""
-                    <div class="premium-card">
-                        <div class="premium-card-header">
-                            {icon("target", 16, "#00A3FF")}
-                            Estimated Market Value
-                        </div>
-                        <div class="metric-label">Market Value Range</div>
-                        <div class="metric-sub">{result["price_range"]}</div>
-                        <div class="metric-label" style="margin-top: 12px;">Estimated Price</div>
-                        <div class="metric-value">{result["predicted_price"]}</div>
-                        <div style="margin-top: 14px; display: flex; align-items: center; gap: 10px;">
-                            <div class="conf-circle" style="border: 3px solid {conf_color};">{conf_val}%</div>
-                            <div>
-                                <div style="display: flex; align-items: center; gap: 4px;">
-                                    {icon("shield-check", 13, conf_color)}
-                                    <span style="color: #94A3B8; font-size: 0.75rem;">Prediction Confidence</span>
-                                </div>
-                                <div class="confidence-meter" style="width: 140px; margin-top: 4px;">
-                                    <div class="confidence-fill" style="width: {conf_val}%; background-color: {conf_color};"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    """,
-                        unsafe_allow_html=True,
-                    )
-
-                # ── Card 2: Market Trend ──
-                with res2:
-                    trend_val = round(random.uniform(2.5, 8.5), 1)
-
-                    # Sparkline
-                    np.random.seed(42)
-                    trend_y = np.cumsum(np.random.randn(12) * 0.5) + 10
-                    trend_y = trend_y - trend_y.min() + 2
-                    months = [
-                        "Jan",
-                        "Feb",
-                        "Mar",
-                        "Apr",
-                        "May",
-                        "Jun",
-                        "Jul",
-                        "Aug",
-                        "Sep",
-                        "Oct",
-                        "Nov",
-                        "Dec",
-                    ]
-
-                    fig_trend = go.Figure()
-                    fig_trend.add_trace(
-                        go.Scatter(
-                            x=months,
-                            y=trend_y,
-                            mode="lines",
-                            line=dict(
-                                color="#00FF88",
-                                width=2.5,
-                                shape="spline",
-                                smoothing=1.3,
-                            ),
-                            fill="tozeroy",
-                            fillcolor="rgba(0,255,136,0.06)",
-                            showlegend=False,
-                        )
-                    )
-                    fig_trend.update_layout(
-                        height=110,
-                        margin=dict(l=0, r=0, t=0, b=0),
-                        paper_bgcolor="rgba(0,0,0,0)",
-                        plot_bgcolor="rgba(0,0,0,0)",
-                        xaxis=dict(visible=False),
-                        yaxis=dict(visible=False),
-                    )
-
-                    st.markdown(
-                        f"""
-                    <div class="premium-card" style="padding-bottom: 14px;">
-                        <div class="premium-card-header" style="justify-content: space-between;">
-                            <span style="display: flex; align-items: center; gap: 8px;">
-                                {icon("trending-up", 16, "#00FF88")}
-                                Market Trend
-                            </span>
-                            <span style="font-size: 0.65rem; color: #94A3B8; font-weight: 400; background: rgba(255,255,255,0.04); padding: 3px 10px; border-radius: 20px;">Last 12 Months</span>
-                        </div>
-                    </div>
-                    """,
-                        unsafe_allow_html=True,
-                    )
-
-                    st.plotly_chart(
-                        fig_trend,
-                        use_container_width=True,
-                        config={"displayModeBar": False},
-                    )
-
-                    st.markdown(
-                        f"""
-                    <div style="margin-top: -16px; padding: 0 6px;">
-                        <div style="display: flex; align-items: center; gap: 6px;">
-                            {icon("trending-up", 14, "#00FF88")}
-                            <span style="color: #00FF88; font-weight: 700; font-size: 1rem;">{trend_val}%</span>
-                        </div>
-                        <div class="metric-label" style="margin-top: 2px;">Increase in market value</div>
-                    </div>
-                    """,
-                        unsafe_allow_html=True,
-                    )
-
-                # ── Card 3: Depreciation Analysis ──
-                with res3:
-                    car_age = result["input_summary"]["car_age"]
-                    dep_pct = result["depreciation_percent"]
-                    progress_width = min(95, max(10, (car_age / 30) * 100))
-
-                    st.markdown(
-                        f"""
-                    <div class="premium-card">
-                        <div class="premium-card-header">
-                            {icon("trending-down", 16, "#FF3B30")}
-                            Depreciation Analysis
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 8px;">
-                            <div>
-                                <div class="metric-label">Original<br>Est. Price</div>
-                                <div style="font-family: Montserrat, sans-serif; font-size: 0.9rem; font-weight: 700; color: #E5E7EB; margin-top: 4px;">{result["original_price"]}</div>
-                            </div>
-                            <div>
-                                <div class="metric-label">Value Lost</div>
-                                <div style="font-size: 0.9rem; font-weight: 700; color: #FF3B30; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
-                                    {icon("trending-down", 12, "#FF3B30")} {dep_pct}
-                                </div>
-                            </div>
-                            <div>
-                                <div class="metric-label">Vehicle Age</div>
-                                <div style="font-family: Montserrat, sans-serif; font-size: 0.9rem; font-weight: 700; color: #E5E7EB; margin-top: 4px;">{car_age} Years</div>
-                            </div>
-                        </div>
-                        <div style="margin-top: 20px; position: relative;">
-                            <div style="height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; width: 100%;"></div>
-                            <div style="height: 4px; background: #00A3FF; border-radius: 2px; width: {progress_width}%; position: absolute; top: 0; left: 0;"></div>
-                            <div style="width: 10px; height: 10px; background: #E5E7EB; border: 2px solid #00A3FF; border-radius: 50%; position: absolute; top: -3px; left: calc({progress_width}% - 5px);"></div>
-                            <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.7rem; color: #94A3B8;">
-                                <span>{year}</span>
-                                <span>{CURRENT_YEAR}</span>
-                            </div>
-                        </div>
-                    </div>
-                    """,
-                        unsafe_allow_html=True,
-                    )
-
-                # ── Similar Vehicles ──
-                recs = result.get("recommendations", [])
-                if recs:
-                    st.markdown(
-                        f"""
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px; margin-bottom: 14px;">
-                        <div class="section-title" style="margin: 0;">
-                            {icon("layers", 16, "#00A3FF")}
-                            Similar Vehicles You Can Consider
-                        </div>
-                        <span style="font-size: 0.72rem; color: #94A3B8; display: flex; align-items: center; gap: 4px; cursor: pointer;">
-                            View All {icon("arrow-right", 12, "#94A3B8")}
-                        </span>
-                    </div>
-                    """,
-                        unsafe_allow_html=True,
-                    )
-
-                    num_recs = min(4, len(recs))
-                    sim_cols = st.columns(num_recs)
-
-                    for idx, rec in enumerate(recs[:num_recs]):
-                        rec_brand = rec.get("brand", brand)
-                        rec_logo = get_brand_logo(rec_brand, 18)
-                        rec_img = SIMILAR_CAR_IMAGES[idx % len(SIMILAR_CAR_IMAGES)]
-                        with sim_cols[idx]:
-                            st.markdown(
-                                f"""
-                            <div class="sim-card">
-                                <img src="{rec_img}" class="sim-card-img" alt="{rec_brand} {rec['model']}">
-                                <div class="sim-card-brand">
-                                    {rec_logo}
-                                    <span class="sim-card-title">{rec_brand} {rec['model']}</span>
-                                </div>
-                                <div class="sim-card-specs">{rec['year']} &middot; {fuel_type} &middot; {transmission}</div>
-                                <div class="sim-card-price">{rec['price']}</div>
-                                <span class="sim-view-btn">View Details</span>
-                            </div>
-                            """,
-                                unsafe_allow_html=True,
-                            )
+                render_valuation_dashboard(result, result.get("recommendations", []))
 
             except Exception as e:
                 st.error(f"Prediction failed: {str(e)}")

@@ -38,3 +38,4 @@ xgboost
 lightgbm
 catboost
 optuna
+fpdf2>=2.7.5
