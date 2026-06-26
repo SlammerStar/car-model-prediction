@@ -49,14 +49,19 @@ def render_future_value_timeline(report: Dict[str, Any]):
     val = report["valuation_report"]
     current_price = val["estimated_market_value_raw"]
 
-    # We simulate future value using a standard depreciation curve (approx 10-15% per year)
-    # The actual stats could provide this, but we'll use a heuristic for the visualization.
-    years = [0, 1, 2, 3, 4, 5]
-    labels = ["Current", "1 Year", "2 Years", "3 Years", "4 Years", "5 Years"]
+    forecasts = report.get("decision_report", {}).get("forecast_timeline", [])
 
-    # Assume 12% annual depreciation for this example visualization
-    depreciation_rate = 0.12
-    values = [current_price * ((1 - depreciation_rate) ** y) for y in years]
+    if forecasts:
+        labels = ["Current"] + [
+            f"{f['year']} Year{'s' if f['year'] > 1 else ''} ({f['retention_percentage']}%)"
+            for f in forecasts
+        ]
+        values = [current_price] + [f["projected_value_raw"] for f in forecasts]
+    else:
+        years = [0, 1, 2, 3, 4, 5]
+        labels = ["Current", "1 Year", "2 Years", "3 Years", "4 Years", "5 Years"]
+        depreciation_rate = 0.12
+        values = [current_price * ((1 - depreciation_rate) ** y) for y in years]
 
     fig = go.Figure()
     fig.add_trace(

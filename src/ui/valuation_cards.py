@@ -38,16 +38,14 @@ def render_hero_card(report: Dict[str, Any]):
     conf_color = get_score_color(conf_score)
 
     market_pos = val["market_position"]
-    rec = val["recommendation"]
+
+    decision = report.get("decision_report", {})
+    rec = decision.get("final_recommendation", val["recommendation"])
 
     rec_badge = get_recommendation_badge(rec)
 
-    # Fake a 'Valuation Score' out of 100 based on confidence and recommendation
-    val_score = conf_score
-    if rec in ["Excellent Buy", "Good Buy"]:
-        val_score = min(98, val_score + 5)
-    elif rec in ["Avoid", "Negotiate"]:
-        val_score = max(20, val_score - 20)
+    # Use Deal Score from Decision Engine
+    val_score = decision.get("deal_score", conf_score)
 
     score_color = get_score_color(val_score)
 

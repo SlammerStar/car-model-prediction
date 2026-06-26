@@ -16,6 +16,9 @@ from src.ui.report_components import (
     render_ai_summary,
     render_factors_cards,
     render_risk_assessment,
+    render_buyer_insights,
+    render_negotiation_assistant,
+    render_ownership_costs,
 )
 from src.ui.export import generate_valuation_pdf
 
@@ -45,6 +48,8 @@ def render_valuation_dashboard(result: Dict[str, Any], similar_vehicles: list = 
         with col1:
             render_ai_summary(result)
             st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+            render_buyer_insights(result)
+            st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
             render_factors_cards(result)
 
         with col2:
@@ -66,6 +71,12 @@ def render_valuation_dashboard(result: Dict[str, Any], similar_vehicles: list = 
             )
             render_spec_card(result["input_summary"])
 
+            st.markdown(
+                f"<div style='color: {COLORS['text_primary']}; font-weight: 700; margin-bottom: 12px; margin-top: 20px;'>Estimated 5-Year Ownership</div>",
+                unsafe_allow_html=True,
+            )
+            render_ownership_costs(result)
+
     with tab_market:
         col1, col2 = st.columns([1, 1])
 
@@ -82,6 +93,14 @@ def render_valuation_dashboard(result: Dict[str, Any], similar_vehicles: list = 
                 unsafe_allow_html=True,
             )
             render_future_value_timeline(result)
+
+            if (
+                result.get("decision_report", {})
+                .get("negotiation_assistant", {})
+                .get("is_available", False)
+            ):
+                st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+                render_negotiation_assistant(result)
 
         st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
         st.markdown(

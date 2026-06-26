@@ -138,3 +138,113 @@ def render_risk_assessment(report: Dict[str, Any]):
         )
 
     st.markdown("</div>", unsafe_allow_html=True)
+
+
+def render_buyer_insights(result: Dict[str, Any]):
+    """Renders dynamic buyer insights."""
+    insights = result.get("decision_report", {}).get("insights", [])
+    if not insights:
+        return
+
+    st.markdown(
+        f"<div style='color: {COLORS['text_primary']}; font-weight: 700; margin-bottom: 12px;'>Buyer Insights</div>",
+        unsafe_allow_html=True,
+    )
+
+    html = '<div style="display: flex; flex-direction: column; gap: 10px;">'
+    for insight in insights:
+        html += f"""
+        <div style="background: {COLORS['card_bg']}; border: 1px solid {COLORS['border']}; border-radius: 8px; padding: 12px 16px; display: flex; align-items: flex-start; gap: 12px;">
+            <div style="color: {COLORS['primary']}; margin-top: 2px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            </div>
+            <div>
+                <div style="color: {COLORS['text_primary']}; font-weight: 600; font-size: 0.95rem;">{insight["insight"]}</div>
+                <div style="color: {COLORS['text_secondary']}; font-size: 0.85rem; margin-top: 4px;">{insight["explanation"]}</div>
+            </div>
+        </div>
+        """
+    html += "</div>"
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def render_negotiation_assistant(result: Dict[str, Any]):
+    """Renders negotiation assistant if asking price provided."""
+    nav = result.get("decision_report", {}).get("negotiation_assistant", {})
+    if not nav or not nav.get("is_available"):
+        return
+
+    st.markdown(
+        f"<div style='color: {COLORS['text_primary']}; font-weight: 700; margin-bottom: 12px;'>Negotiation Assistant</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+    <div style="background: {COLORS['card_bg']}; border: 1px solid {COLORS['border']}; border-radius: 12px; padding: 16px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+            <div>
+                <div style="color: {COLORS['text_secondary']}; font-size: 0.8rem;">Seller Asking Price</div>
+                <div style="color: {COLORS['danger']}; font-weight: 700; font-size: 1.1rem;">{nav['seller_asking_price']}</div>
+            </div>
+            <div>
+                <div style="color: {COLORS['text_secondary']}; font-size: 0.8rem;">Estimated Fair Value</div>
+                <div style="color: {COLORS['success']}; font-weight: 700; font-size: 1.1rem;">{nav['estimated_fair_value']}</div>
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; padding-top: 16px; border-top: 1px dashed {COLORS['border']};">
+            <div>
+                <div style="color: {COLORS['text_secondary']}; font-size: 0.8rem;">Suggested Offer</div>
+                <div style="color: {COLORS['primary']}; font-weight: 700; font-size: 1.1rem;">{nav['suggested_initial_offer']}</div>
+            </div>
+            <div>
+                <div style="color: {COLORS['text_secondary']}; font-size: 0.8rem;">Max Recommended</div>
+                <div style="color: {COLORS['text_primary']}; font-weight: 700; font-size: 1.1rem;">{nav['maximum_recommended_offer']}</div>
+            </div>
+        </div>
+        <div style="background: rgba(0,163,255,0.05); border-radius: 8px; padding: 12px;">
+            <div style="color: {COLORS['text_primary']}; font-size: 0.9rem; font-weight: 600;">Difficulty: {nav['negotiation_difficulty']}</div>
+            <div style="color: {COLORS['text_secondary']}; font-size: 0.8rem; margin-top: 4px;">{nav['reasoning']}</div>
+        </div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_ownership_costs(result: Dict[str, Any]):
+    """Renders ownership costs."""
+    costs = result.get("decision_report", {})
+    if "total_5y" not in costs:
+        return
+
+    st.markdown(
+        f"""
+    <div style="background: {COLORS['card_bg']}; border: 1px solid {COLORS['border']}; border-radius: 12px; padding: 16px;">
+        <div style="color: {COLORS['text_secondary']}; font-size: 0.85rem; margin-bottom: 16px;">
+            Estimated planning costs for the next 5 years based on ~{costs['assumptions']['annual_distance_km']} km/year.
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: {COLORS['text_primary']};">Insurance</span>
+            <span style="color: {COLORS['text_secondary']};">{costs['insurance_5y']}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: {COLORS['text_primary']};">Maintenance</span>
+            <span style="color: {COLORS['text_secondary']};">{costs['maintenance_5y']}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: {COLORS['text_primary']};">Fuel</span>
+            <span style="color: {COLORS['text_secondary']};">{costs['fuel_5y']}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
+            <span style="color: {COLORS['text_primary']};">Registration & Misc</span>
+            <span style="color: {COLORS['text_secondary']};">{costs['registration_misc_5y']}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid {COLORS['border']};">
+            <span style="color: {COLORS['text_primary']}; font-weight: 700;">Total 5-Year Cost</span>
+            <span style="color: {COLORS['primary']}; font-weight: 700;">{costs['total_5y']}</span>
+        </div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )

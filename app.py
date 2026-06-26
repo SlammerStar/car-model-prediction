@@ -847,6 +847,14 @@ if page == "Predict Price":
         mileage = st.number_input(
             "Kilometers Driven", min_value=0, max_value=500000, value=30000, step=1000
         )
+        asking_price_input = st.number_input(
+            "Asking Price (Optional)",
+            min_value=0,
+            value=0,
+            step=10000,
+            help="Enter the seller's asking price for negotiation insights",
+        )
+        asking_price = asking_price_input if asking_price_input > 0 else None
 
     # Auto retrieve specs
     specs = knowledge_engine.get_specs(
@@ -935,6 +943,7 @@ if page == "Predict Price":
                     mpg=mpg,
                     engine_size=engine_size,
                     pipeline=pipeline,
+                    asking_price=asking_price,
                 )
                 st.divider()
 

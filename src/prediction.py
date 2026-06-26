@@ -918,6 +918,7 @@ def predict_price(
     mpg: float,
     engine_size: float,
     pipeline=None,
+    asking_price: float = None,
 ) -> Dict[str, Any]:
     """
     Make a price prediction for a used car using the production Model Registry.
@@ -952,6 +953,8 @@ def predict_price(
     # 3. Instantiate Engines
     from src.explanation_engine import ShapExplanationProvider, ExplanationEngine
     from src.valuation_intelligence import ValuationIntelligenceEngine
+    from src.decision_intelligence import DecisionIntelligenceEngine
+    from src.knowledge_engine import VehicleKnowledgeEngine
 
     # We load the config and engines
     shap_provider = ShapExplanationProvider()
@@ -962,11 +965,15 @@ def predict_price(
         config = json.load(f)
 
     explanation_engine = ExplanationEngine(shap_provider, config)
+    knowledge_engine = VehicleKnowledgeEngine()
+
     valuation_engine = ValuationIntelligenceEngine(
         config_path="src/valuation_config.json",
         explanation_engine=explanation_engine,
-        knowledge_engine=None,  # We could pass the vehicle knowledge engine here later
+        knowledge_engine=knowledge_engine,
     )
+
+    decision_engine = DecisionIntelligenceEngine(knowledge_engine=knowledge_engine)
 
     # 4. Generate Comprehensive Report
     report = valuation_engine.generate_valuation_report(
@@ -979,6 +986,26 @@ def predict_price(
     depreciation_rate = max(0.1, min(depreciation_rate, 0.75))
     original_price = report["estimated_market_value_raw"] / (1 - depreciation_rate)
 
+    input_summary = {
+        "brand": brand,
+        "model": model,
+        "year": year,
+        "car_age": car_age,
+        "transmission": transmission,
+        "mileage": mileage,
+        "fuelType": fuel_type,
+        "mpg": mpg,
+        "engineSize": engine_size,
+    }
+
+    # 6. Generate Decision Report
+    decision_report = decision_engine.generate_decision_report(
+        valuation_report=report,
+        input_summary=input_summary,
+        asking_price=asking_price,
+        current_recommendations=[],
+    )
+
     # Reconstruct result maintaining backward compatibility for the UI
     result = {
         "predicted_price": report["estimated_market_value"],
@@ -987,20 +1014,13 @@ def predict_price(
         "original_price": format_price_inr(original_price),
         "depreciation_percent": f"{depreciation_rate * 100:.0f}%",
         "confidence": f"{report['confidence']['score']:.0f}%",
-        "recommendations": [],  # Backward compatibility array
-        # New Valuation Intelligence fields
+        "recommendations": decision_report.get(
+            "alternatives", []
+        ),  # Use new alternatives
+        # New Valuation & Decision Intelligence fields
         "valuation_report": report,
-        "input_summary": {
-            "brand": brand,
-            "model": model,
-            "year": year,
-            "car_age": car_age,
-            "transmission": transmission,
-            "mileage": mileage,
-            "fuelType": fuel_type,
-            "mpg": mpg,
-            "engineSize": engine_size,
-        },
+        "decision_report": decision_report,
+        "input_summary": input_summary,
     }
 
     logger.info(
