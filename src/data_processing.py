@@ -30,7 +30,6 @@ from src.utils import (
     NUMERICAL_FEATURES,
     TARGET_COLUMN,
     CURRENT_YEAR,
-    PREMIUM_BRANDS,
     get_data_dir,
     logger,
 )
@@ -558,15 +557,8 @@ def create_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Create engineered features for the Indian market dataset.
 
-    Features created:
-        - car_age: Vehicle age in years (CURRENT_YEAR - year)
-        - km_per_year: Average annual usage in kilometers
-        - premium_brand_flag: 1 for premium brands, 0 otherwise
-        - price_inr: Alias for selling_price (backward compatibility)
-        - mileage: Alias for km_driven (backward compatibility)
-        - engineSize: engine_cc / 1000 (backward compatibility, in litres)
-        - mpg: mileage_kmpl (backward compatibility alias)
-        - fuelType: Alias for fuel_type (backward compatibility)
+    Features are now intelligently engineered using the Phase 4
+    Market Intelligence Layer, preserving raw features.
 
     Args:
         df: Cleaned DataFrame.
@@ -574,38 +566,24 @@ def create_features(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         DataFrame with additional engineered features.
     """
-    df = df.copy()
+    from src.market_statistics import MarketStatistics
+    from src.feature_engineering import MarketFeatureEngineer
 
-    # Core features
-    df["car_age"] = CURRENT_YEAR - df["year"]
-    df["car_age"] = df["car_age"].clip(lower=0)
+    # 1. Calculate and cache global market statistics
+    stats = MarketStatistics(df)
 
-    # Average km per year
-    df["km_per_year"] = df["km_driven"] / df["car_age"].replace(0, 0.5)
+    # 2. Instantiate intelligent feature engineer
+    engineer = MarketFeatureEngineer(stats)
 
-    # Premium brand flag
-    df["premium_brand_flag"] = df["brand"].apply(
-        lambda x: 1 if x in PREMIUM_BRANDS else 0
-    )
-
-    # Backward compatibility aliases
-    df["price_inr"] = df["selling_price"]
-    df["mileage"] = df["km_driven"]
-    df["mpg"] = df["mileage_kmpl"].fillna(0)
-    df["engineSize"] = (df["engine_cc"].fillna(0) / 1000).round(1)
-    df["fuelType"] = df["fuel_type"]
-
-    # Strip whitespace from string columns
-    for col in ["brand", "model", "transmission", "fuel_type", "fuelType"]:
-        if col in df.columns:
-            df[col] = df[col].astype(str).str.strip()
+    # 3. Transform features
+    df_engineered = engineer.engineer_features(df)
 
     logger.info(
-        f"Created features. car_age range: {df['car_age'].min()}-{df['car_age'].max()} years, "
-        f"brands: {df['brand'].nunique()}, models: {df['model'].nunique()}"
+        f"Engineered intelligent features. car_age range: {df_engineered['car_age'].min()}-{df_engineered['car_age'].max()} years, "
+        f"brands: {df_engineered['brand'].nunique()}, models: {df_engineered['model'].nunique()}"
     )
 
-    return df
+    return df_engineered
 
 
 def convert_price_to_inr(df: pd.DataFrame) -> pd.DataFrame:
