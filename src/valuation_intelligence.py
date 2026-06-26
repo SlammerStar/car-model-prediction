@@ -1,8 +1,6 @@
 import json
-from pathlib import Path
 from typing import Dict, Any, Optional
 import pandas as pd
-import numpy as np
 
 from src.utils import format_price_inr
 from src.knowledge_engine import VehicleKnowledgeEngine

@@ -1,7 +1,7 @@
 import abc
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Any, Tuple
+from typing import Dict, Tuple, Any
 from src.utils import logger
 
 
