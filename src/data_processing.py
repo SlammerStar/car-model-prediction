@@ -19,9 +19,8 @@ Data Sources:
 """
 
 import pandas as pd
-import numpy as np
 from pathlib import Path
-from typing import Tuple, Optional, Dict, List
+from typing import Tuple, Optional
 
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
