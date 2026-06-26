@@ -57,14 +57,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load the pipeline at startup
+# Global instances
 pipeline = None
-
+knowledge_engine = None
 
 @app.on_event("startup")
 async def startup_event():
-    """Load the ML pipeline on application startup."""
+    """Load the ML pipeline and Knowledge Engine on application startup."""
     global pipeline
+    global knowledge_engine
+    
+    # Load ML pipeline
     try:
         pipeline = load_model(PIPELINE_PATH)
         logger.info("Pipeline loaded successfully at startup.")
@@ -73,7 +76,21 @@ async def startup_event():
             "Model not found. Run 'python -m src.prediction' first. "
             "API will return errors until model is available."
         )
-
+        
+    # Load Knowledge Engine
+    try:
+        from src.data_processing import load_and_merge_datasets, clean_data, convert_price_to_inr, create_features
+        from src.knowledge_engine import VehicleKnowledgeEngine
+        
+        raw_df = load_and_merge_datasets()
+        clean_df = clean_data(raw_df)
+        conv_df = convert_price_to_inr(clean_df)
+        final_df = create_features(conv_df)
+        
+        knowledge_engine = VehicleKnowledgeEngine(final_df)
+        logger.info("Vehicle Knowledge Engine initialized successfully.")
+    except Exception as e:
+        logger.error(f"Failed to initialize Knowledge Engine: {e}")
 
 # ---------------------------------------------------------------------------
 # Request/Response Models
@@ -82,25 +99,23 @@ class CarInput(BaseModel):
     """Input schema for car price prediction."""
 
     brand: str = Field(..., description="Car brand name")
-    model: str = Field(..., description="Car model name")
+    model: str = Field(..., description="Car base model name (from knowledge engine)")
+    variant: str = Field(default="Standard", description="Car variant (from knowledge engine)")
     year: int = Field(..., ge=1990, le=2030, description="Manufacturing year")
     transmission: str = Field(..., description="Transmission type (Manual/Automatic)")
     mileage: int = Field(..., ge=0, description="Kilometers driven")
     fuelType: str = Field(..., description="Fuel type (Petrol/Diesel/CNG/LPG/Electric)")
-    mpg: float = Field(..., ge=0, description="Fuel efficiency in kmpl")
-    engineSize: float = Field(..., ge=0, description="Engine size in litres")
 
     model_config = {
         "json_schema_extra": {
             "example": {
                 "brand": "Maruti",
-                "model": "Swift Dzire VDI",
+                "model": "Swift",
+                "variant": "Dzire VDI",
                 "year": 2018,
                 "transmission": "Manual",
                 "mileage": 45000,
                 "fuelType": "Diesel",
-                "mpg": 23.4,
-                "engineSize": 1.2,
             }
         }
     }
@@ -128,6 +143,7 @@ class HealthResponse(BaseModel):
 
     status: str
     model_loaded: bool
+    knowledge_engine_loaded: bool
     version: str = "2.0.0"
 
 
@@ -146,10 +162,11 @@ async def root():
 
 @app.get("/health", response_model=HealthResponse, tags=["General"])
 async def health_check():
-    """Check if the API and model are healthy."""
+    """Check if the API, model, and knowledge engine are healthy."""
     return HealthResponse(
         status="healthy",
         model_loaded=pipeline is not None,
+        knowledge_engine_loaded=knowledge_engine is not None,
         version="2.0.0",
     )
 
@@ -159,7 +176,7 @@ async def health_check():
     response_model=PredictionResponse,
     tags=["Prediction"],
     summary="Predict car price",
-    description="Predict the price of a used car in Indian Rupees (₹).",
+    description="Predict the price of a used car in Indian Rupees (₹) using the Vehicle Knowledge Engine.",
 )
 async def predict(car: CarInput):
     """
@@ -170,19 +187,42 @@ async def predict(car: CarInput):
     if pipeline is None:
         raise HTTPException(
             status_code=503,
-            detail="Model not loaded. Train the model first using 'python -m src.prediction'.",
+            detail="Model not loaded. Train the model first.",
+        )
+    if knowledge_engine is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Knowledge Engine not loaded.",
         )
 
     try:
+        # Retrieve specs from knowledge engine automatically
+        specs = knowledge_engine.get_specs(
+            brand=car.brand,
+            base_model=car.model,
+            year=car.year,
+            variant=car.variant,
+            fuel=car.fuelType,
+            transmission=car.transmission
+        )
+        
+        if not specs:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid vehicle configuration. Combination does not exist in the Indian market."
+            )
+            
+        full_model = knowledge_engine.get_full_model_string(car.model, car.variant)
+
         result = predict_price(
             brand=car.brand,
-            model=car.model,
+            model=full_model,
             year=car.year,
             transmission=car.transmission,
             mileage=car.mileage,
             fuel_type=car.fuelType,
-            mpg=car.mpg,
-            engine_size=car.engineSize,
+            mpg=specs['mileage'],
+            engine_size=specs['engineSize'],
             pipeline=pipeline,
         )
 
@@ -197,6 +237,8 @@ async def predict(car: CarInput):
             input_summary=result["input_summary"],
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Prediction error: {e}")
         raise HTTPException(
@@ -205,30 +247,62 @@ async def predict(car: CarInput):
         )
 
 
-@app.get("/brands", tags=["Data"])
+@app.get("/knowledge/brands", tags=["Knowledge Engine"])
 async def get_brands():
-    """Get the list of available car brands from the dataset."""
-    try:
-        df = load_and_merge_datasets()
-        df = clean_data(df)
-        brands = sorted(df["brand"].unique().tolist())
-        return {"brands": brands}
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """Get the list of all valid car brands."""
+    if not knowledge_engine:
+        raise HTTPException(status_code=503, detail="Knowledge Engine offline")
+    return {"brands": knowledge_engine.get_brands()}
 
 
-@app.get("/models/{brand}", tags=["Data"])
-async def get_models_for_brand(brand: str):
-    """Get available car models for a specific brand."""
-    try:
-        df = load_and_merge_datasets()
-        brand_df = df[df["brand"].str.lower() == brand.lower()]
-        if brand_df.empty:
-            raise HTTPException(status_code=404, detail=f"Brand '{brand}' not found.")
-        models = sorted(brand_df["model"].unique().tolist())
-        return {"brand": brand, "models": models}
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@app.get("/knowledge/models", tags=["Knowledge Engine"])
+async def get_models(brand: str):
+    """Get available base models for a specific brand."""
+    if not knowledge_engine:
+        raise HTTPException(status_code=503, detail="Knowledge Engine offline")
+    models = knowledge_engine.get_models(brand)
+    if not models:
+        raise HTTPException(status_code=404, detail=f"Brand '{brand}' not found.")
+    return {"brand": brand, "models": models}
+
+
+@app.get("/knowledge/years", tags=["Knowledge Engine"])
+async def get_years(brand: str, model: str):
+    """Get available manufacturing years for a brand and model."""
+    if not knowledge_engine:
+        raise HTTPException(status_code=503, detail="Knowledge Engine offline")
+    years = knowledge_engine.get_years(brand, model)
+    if not years:
+        raise HTTPException(status_code=404, detail="Configuration not found.")
+    return {"years": years}
+
+
+@app.get("/knowledge/variants", tags=["Knowledge Engine"])
+async def get_variants(brand: str, model: str, year: int):
+    """Get available variants for a specific configuration."""
+    if not knowledge_engine:
+        raise HTTPException(status_code=503, detail="Knowledge Engine offline")
+    return {"variants": knowledge_engine.get_variants(brand, model, year)}
+
+
+@app.get("/knowledge/specs", tags=["Knowledge Engine"])
+async def get_specs(brand: str, model: str, year: int, variant: str, fuel: str, transmission: str):
+    """Get inferred specifications for a complete configuration."""
+    if not knowledge_engine:
+        raise HTTPException(status_code=503, detail="Knowledge Engine offline")
+    specs = knowledge_engine.get_specs(brand, model, year, variant, fuel, transmission)
+    if not specs:
+        raise HTTPException(status_code=404, detail="Configuration not found.")
+    return {"specs": specs}
+
+
+@app.get("/knowledge/similar", tags=["Knowledge Engine"])
+async def get_similar(brand: str, model: str, year: int, variant: str):
+    """Get similar alternative configurations for a vehicle."""
+    if not knowledge_engine:
+        raise HTTPException(status_code=503, detail="Knowledge Engine offline")
+    similar = knowledge_engine.get_similar_configurations(brand, model, year, variant)
+    return {"similar_configurations": similar}
 
 
 if __name__ == "__main__":

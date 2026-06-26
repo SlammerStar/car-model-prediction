@@ -668,9 +668,23 @@ def load_metadata():
         return None
 
 
+from src.knowledge_engine import VehicleKnowledgeEngine
+
+@st.cache_resource
+def load_knowledge_engine(dataframe: pd.DataFrame):
+    try:
+        return VehicleKnowledgeEngine(dataframe)
+    except Exception as e:
+        st.error(f"Failed to initialize Knowledge Engine: {e}")
+        return None
+
 df = load_data()
 if df is None:
     st.error("Failed to load dataset.")
+    st.stop()
+
+knowledge_engine = load_knowledge_engine(df)
+if knowledge_engine is None:
     st.stop()
 
 pipeline = load_ml_pipeline()
@@ -792,46 +806,75 @@ if page == "Predict Price":
         unsafe_allow_html=True,
     )
 
-    # Row 1: Brand + Year Slider + Fuel Efficiency
-    r1c1, r1c2, r1c3 = st.columns([1, 1.2, 1])
+    # Row 1: Brand + Base Model + Year
+    r1c1, r1c2, r1c3 = st.columns(3)
     with r1c1:
-        brand = st.selectbox("Brand", sorted(df["brand"].unique()))
+        brands = knowledge_engine.get_brands()
+        brand = st.selectbox("Brand", brands)
     with r1c2:
-        year = st.slider(
-            "Manufacturing Year",
-            min_value=1996,
-            max_value=int(CURRENT_YEAR),
-            value=2018,
-        )
+        models = knowledge_engine.get_models(brand)
+        base_model = st.selectbox("Model", models)
     with r1c3:
-        mpg = st.number_input(
-            "Mileage (kmpl)",
-            min_value=0.0,
-            max_value=100.0,
-            value=float(df["mpg"].median()),
-            step=0.5,
-        )
+        years = knowledge_engine.get_years(brand, base_model)
+        year = st.selectbox("Manufacturing Year", years if years else [CURRENT_YEAR])
 
-    # Row 2: Model + Transmission + Engine Size
+    # Row 2: Variant + Fuel Type + Transmission
     r2c1, r2c2, r2c3 = st.columns(3)
     with r2c1:
-        brand_models = sorted(df[df["brand"] == brand]["model"].unique())
-        model_name = st.selectbox("Model", brand_models)
+        variants = knowledge_engine.get_variants(brand, base_model, year)
+        variant = st.selectbox(
+            "Variant", 
+            variants if variants else ["Standard"],
+            format_func=lambda x: knowledge_engine.get_variant_label(brand, base_model, year, x) if variants else x
+        )
     with r2c2:
-        transmission = st.selectbox("Transmission", sorted(df["transmission"].unique()))
+        fuel_types = knowledge_engine.get_fuel_types(brand, base_model, year, variant)
+        fuel_type = st.selectbox("Fuel Type", fuel_types if fuel_types else ["Petrol"])
     with r2c3:
-        engine_size = st.selectbox("Engine Size (L)", sorted(df["engineSize"].unique()))
+        transmissions = knowledge_engine.get_transmissions(brand, base_model, year, variant, fuel_type)
+        transmission = st.selectbox("Transmission", transmissions if transmissions else ["Manual"])
 
-    # Row 3: Fuel Type + Mileage + Button
-    r3c1, r3c2, r3c3 = st.columns(3)
+    # Row 3: Usage + Auto-Populated Specs
+    r3c1, r3c2, r3c3 = st.columns([1.2, 1.8, 1])
     with r3c1:
-        fuel_type = st.selectbox("Fuel Type", sorted(df["fuelType"].unique()))
-    with r3c2:
         mileage = st.number_input(
             "Kilometers Driven", min_value=0, max_value=500000, value=30000, step=1000
         )
+    
+    # Auto retrieve specs
+    specs = knowledge_engine.get_specs(brand, base_model, year, variant, fuel_type, transmission)
+    
+    with r3c2:
+        if specs:
+            conf_label = specs.get('confidence_level', 'Medium Confidence')
+            conf_color = "#00FF88" if "High" in conf_label else ("#FFC857" if "Medium" in conf_label else "#FF3B30")
+            
+            st.markdown(f"""
+            <div style="background: rgba(0,163,255,0.03); border: 1px solid rgba(0,163,255,0.15); border-radius: 10px; padding: 12px 14px; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 4px; min-height: 72px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 0.65rem; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.5px;">Auto-detected Specs</div>
+                    <div style="font-size: 0.65rem; color: {conf_color}; font-weight: 600;">{conf_label}</div>
+                </div>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <div style="color: #E5E7EB; font-weight: 600; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;">{icon('zap', 14, '#00A3FF')} {specs['engineSize']}L / {specs['max_power_bhp']} bhp</div>
+                    <div style="color: #E5E7EB; font-weight: 600; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;">{icon('gauge', 14, '#00A3FF')} {specs['mileage']} kmpl</div>
+                    <div style="color: #E5E7EB; font-weight: 600; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;">{icon('car', 14, '#00A3FF')} {specs['seats']} Seats</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Map back to pipeline expected variables
+            model_name = knowledge_engine.get_full_model_string(base_model, variant)
+            mpg = specs['mileage']
+            engine_size = specs['engineSize']
+        else:
+            st.warning("Specs not found.")
+            model_name = knowledge_engine.get_full_model_string(base_model, variant)
+            mpg = 15.0
+            engine_size = 1.2
+
     with r3c3:
-        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
         predict_trigger = st.button("CALCULATE VALUATION   \u2192")
 
     # ── Dynamic Vehicle Image Card (right column of hero, rendered after form so brand/model are known) ──

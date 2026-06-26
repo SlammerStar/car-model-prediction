@@ -80,9 +80,9 @@ OWNER_NORMALIZE = {
 # ---------------------------------------------------------------------------
 
 
-def parse_brand_model(name: str) -> Tuple[str, str]:
+def parse_brand_model(name: str) -> Tuple[str, str, str, str]:
     """
-    Extract brand and model from a combined name string.
+    Extract brand, model, base_model, and variant from a combined name string.
 
     Handles special cases like 'Land Rover', 'Mercedes-Benz', etc.
 
@@ -90,35 +90,42 @@ def parse_brand_model(name: str) -> Tuple[str, str]:
         name: Combined car name (e.g., 'Maruti Swift Dzire VDI').
 
     Returns:
-        Tuple of (brand, model).
+        Tuple of (brand, model, base_model, variant).
     """
     if not isinstance(name, str) or not name.strip():
-        return "Unknown", "Unknown"
+        return "Unknown", "Unknown", "Unknown", "Standard"
 
     parts = name.strip().split()
     if len(parts) == 0:
-        return "Unknown", "Unknown"
+        return "Unknown", "Unknown", "Unknown", "Standard"
 
     # Handle multi-word brands
     if len(parts) >= 2 and parts[0] == "Land" and parts[1] == "Rover":
         brand = "Land Rover"
-        model = " ".join(parts[2:]) if len(parts) > 2 else "Unknown"
+        rest = parts[2:]
     elif len(parts) >= 2 and parts[0] == "Ashok" and parts[1] == "Leyland":
         brand = "Ashok Leyland"
-        model = " ".join(parts[2:]) if len(parts) > 2 else "Unknown"
+        rest = parts[2:]
     else:
         brand = parts[0]
-        model = " ".join(parts[1:]) if len(parts) > 1 else "Unknown"
+        rest = parts[1:]
 
     # Normalize brand names
     brand = BRAND_NORMALIZE.get(brand, brand)
+    
+    if not rest:
+        return brand, "Unknown", "Unknown", "Standard"
 
-    # Clean model: take first 2-3 meaningful words to reduce cardinality
-    model_parts = model.split()
-    if len(model_parts) > 3:
-        model = " ".join(model_parts[:3])
+    # Clean model: take first 2-3 meaningful words to reduce cardinality for ML
+    model = " ".join(rest[:3])
+    
+    # Base model is the first word of the rest
+    base_model = rest[0]
+    
+    # Variant is everything after the base model
+    variant = " ".join(rest[1:]) if len(rest) > 1 else "Standard"
 
-    return brand.strip(), model.strip()
+    return brand.strip(), model.strip(), base_model.strip(), variant.strip()
 
 
 def parse_numeric_with_unit(value, unit_to_strip: str = "") -> Optional[float]:
@@ -204,6 +211,8 @@ def load_cardekho_v3(filepath: Path) -> pd.DataFrame:
     parsed = df["name"].apply(parse_brand_model)
     df["brand"] = parsed.apply(lambda x: x[0])
     df["model"] = parsed.apply(lambda x: x[1])
+    df["base_model"] = parsed.apply(lambda x: x[2])
+    df["variant"] = parsed.apply(lambda x: x[3])
 
     # Parse numeric fields from strings
     df["mileage_kmpl"] = df["mileage"].apply(parse_mileage_kmpl)
@@ -240,6 +249,8 @@ def load_cardekho_v3(filepath: Path) -> pd.DataFrame:
     unified_cols = [
         "brand",
         "model",
+        "base_model",
+        "variant",
         "year",
         "selling_price",
         "km_driven",
@@ -290,6 +301,8 @@ def load_kasliwal_multicity(filepath: Path) -> pd.DataFrame:
     parsed = df["Name"].apply(parse_brand_model)
     df["brand"] = parsed.apply(lambda x: x[0])
     df["model"] = parsed.apply(lambda x: x[1])
+    df["base_model"] = parsed.apply(lambda x: x[2])
+    df["variant"] = parsed.apply(lambda x: x[3])
 
     # Convert price from Lakhs to raw INR
     df["selling_price"] = (df["Price"] * 100_000).astype(int)
@@ -333,6 +346,8 @@ def load_kasliwal_multicity(filepath: Path) -> pd.DataFrame:
     unified_cols = [
         "brand",
         "model",
+        "base_model",
+        "variant",
         "year",
         "selling_price",
         "km_driven",

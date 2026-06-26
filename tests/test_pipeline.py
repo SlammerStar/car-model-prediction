@@ -216,16 +216,20 @@ class TestParsing:
         """Test brand/model extraction from combined name."""
         from src.data_processing import parse_brand_model
 
-        brand, model = parse_brand_model("Maruti Swift Dzire VDI")
+        brand, model, base_model, variant = parse_brand_model("Maruti Swift Dzire VDI")
         assert brand == "Maruti"
         assert "Swift" in model
+        assert base_model == "Swift"
+        assert variant == "Dzire VDI"
 
     def test_parse_brand_model_land_rover(self):
         """Test multi-word brand parsing."""
         from src.data_processing import parse_brand_model
 
-        brand, model = parse_brand_model("Land Rover Range Rover 3.0")
+        brand, model, base_model, variant = parse_brand_model("Land Rover Range Rover 3.0")
         assert brand == "Land Rover"
+        assert base_model == "Range"
+        assert variant == "Rover 3.0"
 
     def test_parse_mileage_kmpl(self):
         """Test fuel efficiency parsing."""
