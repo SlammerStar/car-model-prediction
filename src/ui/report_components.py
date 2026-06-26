@@ -153,8 +153,7 @@ def render_buyer_insights(result: Dict[str, Any]):
 
     html = '<div style="display: flex; flex-direction: column; gap: 10px;">'
     for insight in insights:
-        html += f"""
-        <div style="background: {COLORS['card_bg']}; border: 1px solid {COLORS['border']}; border-radius: 8px; padding: 12px 16px; display: flex; align-items: flex-start; gap: 12px;">
+        html += f"""<div style="background: {COLORS['card_bg']}; border: 1px solid {COLORS['border']}; border-radius: 8px; padding: 12px 16px; display: flex; align-items: flex-start; gap: 12px;">
             <div style="color: {COLORS['primary']}; margin-top: 2px;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
             </div>
@@ -162,8 +161,7 @@ def render_buyer_insights(result: Dict[str, Any]):
                 <div style="color: {COLORS['text_primary']}; font-weight: 600; font-size: 0.95rem;">{insight["insight"]}</div>
                 <div style="color: {COLORS['text_secondary']}; font-size: 0.85rem; margin-top: 4px;">{insight["explanation"]}</div>
             </div>
-        </div>
-        """
+        </div>"""
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 

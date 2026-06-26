@@ -669,7 +669,7 @@ from src.knowledge_engine import VehicleKnowledgeEngine
 
 
 @st.cache_resource
-def load_knowledge_engine(dataframe: pd.DataFrame):
+def load_knowledge_engine(dataframe: pd.DataFrame, _version=2):
     try:
         return VehicleKnowledgeEngine(dataframe)
     except Exception as e:
@@ -913,8 +913,7 @@ if page == "Predict Price":
             <img src="{car_img}" class="vehicle-card-img" alt="{brand} {model_name}">
             <div class="vehicle-card-body">
                 <div class="vehicle-card-title">
-                    {brand_logo_html}
-                    {brand} {model_name}
+                    {brand_logo_html}{brand} {model_name}
                 </div>
                 <div class="vehicle-card-specs">{year} &middot; {transmission} &middot; {fuel_type}</div>
                 <div class="vehicle-card-tags">

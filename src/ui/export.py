@@ -107,7 +107,7 @@ def generate_valuation_pdf(report: Dict[str, Any]) -> str:
     pdf.set_text_color(30, 30, 30)
     pdf.cell(0, 8, "AI Valuation Summary", new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("helvetica", "", 11)
-    pdf.multi_cell(0, 6, val.get("ai_summary", ""))
+    pdf.multi_cell(0, 6, val.get("ai_summary", ""), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(8)
 
     # Vehicle Specs & Risk
@@ -156,7 +156,9 @@ def generate_valuation_pdf(report: Dict[str, Any]) -> str:
     buyer_insights = decision.get("buyer_insights", [])
     if buyer_insights:
         for idx, insight in enumerate(buyer_insights[:3]):
-            pdf.multi_cell(85, 6, f"• {insight.get('insight', '')}")
+            pdf.multi_cell(
+                85, 6, f"- {insight.get('insight', '')}", new_x="LMARGIN", new_y="NEXT"
+            )
     else:
         pdf.cell(85, 6, "N/A", new_x="LMARGIN", new_y="NEXT")
 
@@ -209,7 +211,13 @@ def generate_valuation_pdf(report: Dict[str, Any]) -> str:
         pdf.set_font("helvetica", "", 10)
         pdf.set_text_color(50, 50, 50)
         for f in pos_factors:
-            pdf.multi_cell(0, 6, f"• {f['feature']}: {f['explanation']}")
+            pdf.multi_cell(
+                0,
+                6,
+                f"- {f['feature']}: {f['explanation']}",
+                new_x="LMARGIN",
+                new_y="NEXT",
+            )
 
     pdf.ln(4)
 
@@ -221,7 +229,13 @@ def generate_valuation_pdf(report: Dict[str, Any]) -> str:
         pdf.set_font("helvetica", "", 10)
         pdf.set_text_color(50, 50, 50)
         for f in neg_factors:
-            pdf.multi_cell(0, 6, f"• {f['feature']}: {f['explanation']}")
+            pdf.multi_cell(
+                0,
+                6,
+                f"- {f['feature']}: {f['explanation']}",
+                new_x="LMARGIN",
+                new_y="NEXT",
+            )
 
     pdf.ln(8)
 
@@ -264,7 +278,7 @@ def generate_valuation_pdf(report: Dict[str, Any]) -> str:
             pdf.cell(
                 0,
                 6,
-                f"• {sv['label']} - {sanitize(sv['estimated_value'])} (Match: {sv['match_score']}%)",
+                f"- {sv['label']} - {sanitize(sv['estimated_value'])} (Match: {sv['match_score']}%)",
                 new_x="LMARGIN",
                 new_y="NEXT",
             )
