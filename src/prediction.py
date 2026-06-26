@@ -922,6 +922,7 @@ def predict_price(
     engine_size: float,
     pipeline=None,
     asking_price: float = None,
+    knowledge_engine=None,
 ) -> Dict[str, Any]:
     """
     Make a price prediction for a used car using the production Model Registry.
@@ -957,7 +958,6 @@ def predict_price(
     from src.explanation_engine import ShapExplanationProvider, ExplanationEngine
     from src.valuation_intelligence import ValuationIntelligenceEngine
     from src.decision_intelligence import DecisionIntelligenceEngine
-    from src.knowledge_engine import VehicleKnowledgeEngine
 
     # We load the config and engines
     shap_provider = ShapExplanationProvider()
@@ -968,7 +968,6 @@ def predict_price(
         config = json.load(f)
 
     explanation_engine = ExplanationEngine(shap_provider, config)
-    knowledge_engine = VehicleKnowledgeEngine()
 
     valuation_engine = ValuationIntelligenceEngine(
         config_path="src/valuation_config.json",

@@ -944,6 +944,7 @@ if page == "Predict Price":
                     engine_size=engine_size,
                     pipeline=pipeline,
                     asking_price=asking_price,
+                    knowledge_engine=knowledge_engine,
                 )
                 st.divider()
 
