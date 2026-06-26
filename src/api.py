@@ -28,7 +28,6 @@ from src.utils import (
     load_model,
     logger,
 )
-from src.data_processing import load_and_merge_datasets, clean_data
 
 # ---------------------------------------------------------------------------
 # App Initialization
@@ -61,12 +60,13 @@ app.add_middleware(
 pipeline = None
 knowledge_engine = None
 
+
 @app.on_event("startup")
 async def startup_event():
     """Load the ML pipeline and Knowledge Engine on application startup."""
     global pipeline
     global knowledge_engine
-    
+
     # Load ML pipeline
     try:
         pipeline = load_model(PIPELINE_PATH)
@@ -76,21 +76,27 @@ async def startup_event():
             "Model not found. Run 'python -m src.prediction' first. "
             "API will return errors until model is available."
         )
-        
+
     # Load Knowledge Engine
     try:
-        from src.data_processing import load_and_merge_datasets, clean_data, convert_price_to_inr, create_features
+        from src.data_processing import (
+            load_and_merge_datasets,
+            clean_data,
+            convert_price_to_inr,
+            create_features,
+        )
         from src.knowledge_engine import VehicleKnowledgeEngine
-        
+
         raw_df = load_and_merge_datasets()
         clean_df = clean_data(raw_df)
         conv_df = convert_price_to_inr(clean_df)
         final_df = create_features(conv_df)
-        
+
         knowledge_engine = VehicleKnowledgeEngine(final_df)
         logger.info("Vehicle Knowledge Engine initialized successfully.")
     except Exception as e:
         logger.error(f"Failed to initialize Knowledge Engine: {e}")
+
 
 # ---------------------------------------------------------------------------
 # Request/Response Models
@@ -100,7 +106,9 @@ class CarInput(BaseModel):
 
     brand: str = Field(..., description="Car brand name")
     model: str = Field(..., description="Car base model name (from knowledge engine)")
-    variant: str = Field(default="Standard", description="Car variant (from knowledge engine)")
+    variant: str = Field(
+        default="Standard", description="Car variant (from knowledge engine)"
+    )
     year: int = Field(..., ge=1990, le=2030, description="Manufacturing year")
     transmission: str = Field(..., description="Transmission type (Manual/Automatic)")
     mileage: int = Field(..., ge=0, description="Kilometers driven")
@@ -203,15 +211,15 @@ async def predict(car: CarInput):
             year=car.year,
             variant=car.variant,
             fuel=car.fuelType,
-            transmission=car.transmission
+            transmission=car.transmission,
         )
-        
+
         if not specs:
             raise HTTPException(
                 status_code=400,
-                detail="Invalid vehicle configuration. Combination does not exist in the Indian market."
+                detail="Invalid vehicle configuration. Combination does not exist in the Indian market.",
             )
-            
+
         full_model = knowledge_engine.get_full_model_string(car.model, car.variant)
 
         result = predict_price(
@@ -221,8 +229,8 @@ async def predict(car: CarInput):
             transmission=car.transmission,
             mileage=car.mileage,
             fuel_type=car.fuelType,
-            mpg=specs['mileage'],
-            engine_size=specs['engineSize'],
+            mpg=specs["mileage"],
+            engine_size=specs["engineSize"],
             pipeline=pipeline,
         )
 
@@ -286,7 +294,9 @@ async def get_variants(brand: str, model: str, year: int):
 
 
 @app.get("/knowledge/specs", tags=["Knowledge Engine"])
-async def get_specs(brand: str, model: str, year: int, variant: str, fuel: str, transmission: str):
+async def get_specs(
+    brand: str, model: str, year: int, variant: str, fuel: str, transmission: str
+):
     """Get inferred specifications for a complete configuration."""
     if not knowledge_engine:
         raise HTTPException(status_code=503, detail="Knowledge Engine offline")

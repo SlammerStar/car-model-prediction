@@ -112,16 +112,16 @@ def parse_brand_model(name: str) -> Tuple[str, str, str, str]:
 
     # Normalize brand names
     brand = BRAND_NORMALIZE.get(brand, brand)
-    
+
     if not rest:
         return brand, "Unknown", "Unknown", "Standard"
 
     # Clean model: take first 2-3 meaningful words to reduce cardinality for ML
     model = " ".join(rest[:3])
-    
+
     # Base model is the first word of the rest
     base_model = rest[0]
-    
+
     # Variant is everything after the base model
     variant = " ".join(rest[1:]) if len(rest) > 1 else "Standard"
 

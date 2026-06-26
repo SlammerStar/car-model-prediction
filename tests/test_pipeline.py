@@ -226,7 +226,9 @@ class TestParsing:
         """Test multi-word brand parsing."""
         from src.data_processing import parse_brand_model
 
-        brand, model, base_model, variant = parse_brand_model("Land Rover Range Rover 3.0")
+        brand, model, base_model, variant = parse_brand_model(
+            "Land Rover Range Rover 3.0"
+        )
         assert brand == "Land Rover"
         assert base_model == "Range"
         assert variant == "Rover 3.0"
