@@ -133,7 +133,9 @@ class MarketFeatureEngineer:
             df["configuration_scarcity_score"] = 0.0
 
         # Market Stability Score
-        df["market_stability_score"] = df["brand"].apply(self.stats.get_brand_stability).fillna(0.5)
+        df["market_stability_score"] = (
+            df["brand"].apply(self.stats.get_brand_stability).fillna(0.5)
+        )
 
         # Market Liquidity Score (How easily a vehicle might sell based on popularity combos)
         df["market_liquidity_score"] = (
