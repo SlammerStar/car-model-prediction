@@ -1,21 +1,32 @@
 """
-Data Processing Module
-======================
+Data Processing Module — DRIVEIQ 2.0
+=====================================
 
-Handles loading, merging, cleaning, preparing features,
-and building the preprocessing pipeline.
+Production-quality data engineering pipeline for Indian used-car valuation.
+
+This module handles:
+    - Loading raw datasets (CarDekho v3, Kasliwal multi-city)
+    - Parsing compound fields (name → brand + model, engine CC, power bhp, mileage kmpl)
+    - Standardizing column names and categorical values
+    - Handling missing values with domain-aware imputation
+    - Removing duplicates, invalid records, and outliers
+    - Merging multiple datasets with deduplication
+    - Producing a backward-compatible unified dataset
+
+Data Sources:
+    - Dataset A: CarDekho v3 (nehalbirla/vehicle-dataset-from-cardekho) — ODbL License
+    - Dataset B: Kasliwal Multi-City (avikasliwal/used-cars-price-prediction) — Public/Kaggle
 """
 
 import pandas as pd
+import numpy as np
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Optional, Dict, List
+
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from src.utils import (
-    BRAND_FILE_MAP,
-    EXCHANGE_RATE,
-    INDIAN_MARKET_MULTIPLIERS,
     CATEGORICAL_FEATURES,
     NUMERICAL_FEATURES,
     TARGET_COLUMN,
@@ -26,184 +37,549 @@ from src.utils import (
 )
 
 
-def load_single_brand(filepath: Path, brand_name: str) -> pd.DataFrame:
+# ---------------------------------------------------------------------------
+# Constants for data processing
+# ---------------------------------------------------------------------------
+
+# Brand name normalization map
+BRAND_NORMALIZE = {
+    "Land": "Land Rover",
+    "ISUZU": "Isuzu",
+    "Mercedes-Benz": "Mercedes",
+}
+
+# Fuel type normalization
+FUEL_NORMALIZE = {
+    "Diesel": "Diesel",
+    "Petrol": "Petrol",
+    "CNG": "CNG",
+    "LPG": "LPG",
+    "Electric": "Electric",
+}
+
+# Transmission normalization
+TRANSMISSION_NORMALIZE = {
+    "Manual": "Manual",
+    "Automatic": "Automatic",
+}
+
+# Owner type normalization
+OWNER_NORMALIZE = {
+    "First Owner": "First Owner",
+    "First": "First Owner",
+    "Second Owner": "Second Owner",
+    "Second": "Second Owner",
+    "Third Owner": "Third Owner",
+    "Third": "Third Owner",
+    "Fourth & Above Owner": "Fourth & Above Owner",
+    "Fourth & Above": "Fourth & Above Owner",
+    "Test Drive Car": "Test Drive Car",
+}
+
+
+# ---------------------------------------------------------------------------
+# Parsing Utilities
+# ---------------------------------------------------------------------------
+
+def parse_brand_model(name: str) -> Tuple[str, str]:
     """
-    Load a single brand's CSV file and add a 'brand' column.
+    Extract brand and model from a combined name string.
+
+    Handles special cases like 'Land Rover', 'Mercedes-Benz', etc.
 
     Args:
-        filepath: Path to the CSV file.
-        brand_name: Name of the car brand (e.g., 'BMW', 'Audi').
+        name: Combined car name (e.g., 'Maruti Swift Dzire VDI').
 
     Returns:
-        DataFrame with standardized columns and a 'brand' column.
+        Tuple of (brand, model).
     """
+    if not isinstance(name, str) or not name.strip():
+        return "Unknown", "Unknown"
+
+    parts = name.strip().split()
+    if len(parts) == 0:
+        return "Unknown", "Unknown"
+
+    # Handle multi-word brands
+    if len(parts) >= 2 and parts[0] == "Land" and parts[1] == "Rover":
+        brand = "Land Rover"
+        model = " ".join(parts[2:]) if len(parts) > 2 else "Unknown"
+    elif len(parts) >= 2 and parts[0] == "Ashok" and parts[1] == "Leyland":
+        brand = "Ashok Leyland"
+        model = " ".join(parts[2:]) if len(parts) > 2 else "Unknown"
+    else:
+        brand = parts[0]
+        model = " ".join(parts[1:]) if len(parts) > 1 else "Unknown"
+
+    # Normalize brand names
+    brand = BRAND_NORMALIZE.get(brand, brand)
+
+    # Clean model: take first 2-3 meaningful words to reduce cardinality
+    model_parts = model.split()
+    if len(model_parts) > 3:
+        model = " ".join(model_parts[:3])
+
+    return brand.strip(), model.strip()
+
+
+def parse_numeric_with_unit(value, unit_to_strip: str = "") -> Optional[float]:
+    """
+    Parse a numeric value from a string that may contain units.
+
+    Args:
+        value: Value to parse (e.g., '1248 CC', '74 bhp', '23.4 kmpl').
+        unit_to_strip: Unit suffix to remove before parsing.
+
+    Returns:
+        Parsed float value, or None if parsing fails.
+    """
+    if pd.isna(value) or not isinstance(value, str):
+        return None
+
+    cleaned = value.strip()
+    if unit_to_strip:
+        cleaned = cleaned.replace(unit_to_strip, "").strip()
+
+    # Remove common unit suffixes
+    for suffix in ["CC", "cc", "bhp", "BHP", "kmpl", "km/kg", "kmkg"]:
+        cleaned = cleaned.replace(suffix, "").strip()
+
+    try:
+        return float(cleaned)
+    except (ValueError, TypeError):
+        return None
+
+
+def parse_mileage_kmpl(value) -> Optional[float]:
+    """
+    Parse fuel efficiency from various formats to km/l.
+
+    Handles: '23.4 kmpl', '26.6 km/kg' (CNG/LPG).
+
+    Args:
+        value: Mileage string.
+
+    Returns:
+        Fuel efficiency in kmpl (float), or None.
+    """
+    if pd.isna(value) or not isinstance(value, str):
+        return None
+
+    cleaned = value.strip().lower()
+
+    # Remove units and parse
+    for unit in ["kmpl", "km/kg", "km/l"]:
+        if unit in cleaned:
+            cleaned = cleaned.replace(unit, "").strip()
+            break
+
+    try:
+        return float(cleaned)
+    except (ValueError, TypeError):
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Dataset A: CarDekho v3 Loader
+# ---------------------------------------------------------------------------
+
+def load_cardekho_v3(filepath: Path) -> pd.DataFrame:
+    """
+    Load and standardize the CarDekho v3 dataset.
+
+    Source: kaggle.com/datasets/nehalbirla/vehicle-dataset-from-cardekho
+    License: Open Database License (ODbL) v1.0
+
+    Args:
+        filepath: Path to cardekho_v3.csv.
+
+    Returns:
+        DataFrame with standardized column names.
+    """
+    logger.info(f"Loading CarDekho v3 from {filepath}")
     df = pd.read_csv(filepath)
+    logger.info(f"  Raw records: {len(df)}")
 
-    # Standardize column names (some datasets have 'tax(£)' instead of 'tax')
-    df.columns = df.columns.str.strip().str.lower()
-    rename_map = {"tax(£)": "tax", "fueltype": "fuelType"}
-    df.rename(columns=rename_map, inplace=True)
+    # Parse brand and model from 'name'
+    parsed = df["name"].apply(parse_brand_model)
+    df["brand"] = parsed.apply(lambda x: x[0])
+    df["model"] = parsed.apply(lambda x: x[1])
 
-    # Re-capitalize to match expected schema
-    col_map = {
-        "model": "model",
-        "year": "year",
-        "price": "price",
+    # Parse numeric fields from strings
+    df["mileage_kmpl"] = df["mileage"].apply(parse_mileage_kmpl)
+    df["engine_cc"] = df["engine"].apply(
+        lambda x: parse_numeric_with_unit(x, "CC")
+    )
+    df["max_power_bhp"] = df["max_power"].apply(
+        lambda x: parse_numeric_with_unit(x, "bhp")
+    )
+
+    # Rename columns to unified schema
+    df = df.rename(columns={
+        "selling_price": "selling_price",
+        "km_driven": "km_driven",
+        "fuel": "fuel_type",
         "transmission": "transmission",
-        "mileage": "mileage",
-        "fueltype": "fuelType",
-        "tax": "tax",
-        "mpg": "mpg",
-        "enginesize": "engineSize",
-    }
-    df.rename(columns=col_map, inplace=True)
+        "owner": "owner_type",
+        "seats": "seats",
+    })
 
-    df["brand"] = brand_name
-    logger.info(f"Loaded {brand_name}: {len(df)} records")
+    # Normalize categorical values
+    df["fuel_type"] = df["fuel_type"].map(FUEL_NORMALIZE).fillna(df["fuel_type"])
+    df["transmission"] = df["transmission"].map(TRANSMISSION_NORMALIZE).fillna(
+        df["transmission"]
+    )
+    df["owner_type"] = df["owner_type"].map(OWNER_NORMALIZE).fillna(df["owner_type"])
+
+    # Add metadata
+    df["seller_type"] = df.get("seller_type", pd.Series(dtype=str))
+    df["location"] = None
+    df["source"] = "cardekho_v3"
+
+    # Select unified columns
+    unified_cols = [
+        "brand", "model", "year", "selling_price", "km_driven",
+        "fuel_type", "transmission", "owner_type", "mileage_kmpl",
+        "engine_cc", "max_power_bhp", "seats", "seller_type",
+        "location", "source",
+    ]
+    df = df[[c for c in unified_cols if c in df.columns]].copy()
+
+    logger.info(f"  Standardized records: {len(df)}")
     return df
 
 
-def load_and_merge_datasets() -> pd.DataFrame:
+# ---------------------------------------------------------------------------
+# Dataset B: Kasliwal Multi-City Loader
+# ---------------------------------------------------------------------------
+
+def load_kasliwal_multicity(filepath: Path) -> pd.DataFrame:
     """
-    Load all brand CSV files and merge them into a single DataFrame.
+    Load and standardize the Kasliwal multi-city dataset.
+
+    Source: kaggle.com/datasets/avikasliwal/used-cars-price-prediction
+    License: Public/Kaggle (listed as Other)
+
+    Args:
+        filepath: Path to kasliwal_train.csv.
 
     Returns:
-        Merged DataFrame containing all brands with standardized columns.
+        DataFrame with standardized column names.
+    """
+    logger.info(f"Loading Kasliwal multi-city from {filepath}")
+    df = pd.read_csv(filepath)
+    logger.info(f"  Raw records: {len(df)}")
+
+    # Drop index column
+    if "Unnamed: 0" in df.columns:
+        df = df.drop(columns=["Unnamed: 0"])
+
+    # Parse brand and model from 'Name'
+    parsed = df["Name"].apply(parse_brand_model)
+    df["brand"] = parsed.apply(lambda x: x[0])
+    df["model"] = parsed.apply(lambda x: x[1])
+
+    # Convert price from Lakhs to raw INR
+    df["selling_price"] = (df["Price"] * 100_000).astype(int)
+
+    # Parse numeric fields
+    df["mileage_kmpl"] = df["Mileage"].apply(parse_mileage_kmpl)
+    df["engine_cc"] = df["Engine"].apply(
+        lambda x: parse_numeric_with_unit(x, "CC")
+    )
+    df["max_power_bhp"] = df["Power"].apply(
+        lambda x: parse_numeric_with_unit(x, "bhp") if isinstance(x, str) and x.strip().lower() != "null" else None
+    )
+
+    # Rename columns to unified schema
+    df = df.rename(columns={
+        "Year": "year",
+        "Kilometers_Driven": "km_driven",
+        "Fuel_Type": "fuel_type",
+        "Transmission": "transmission",
+        "Owner_Type": "owner_type",
+        "Seats": "seats",
+        "Location": "location",
+    })
+
+    # Normalize categorical values
+    df["fuel_type"] = df["fuel_type"].map(FUEL_NORMALIZE).fillna(df["fuel_type"])
+    df["transmission"] = df["transmission"].map(TRANSMISSION_NORMALIZE).fillna(
+        df["transmission"]
+    )
+    df["owner_type"] = df["owner_type"].map(OWNER_NORMALIZE).fillna(df["owner_type"])
+
+    # Add metadata
+    df["seller_type"] = None
+    df["source"] = "kasliwal_multicity"
+
+    # Select unified columns
+    unified_cols = [
+        "brand", "model", "year", "selling_price", "km_driven",
+        "fuel_type", "transmission", "owner_type", "mileage_kmpl",
+        "engine_cc", "max_power_bhp", "seats", "seller_type",
+        "location", "source",
+    ]
+    df = df[[c for c in unified_cols if c in df.columns]].copy()
+
+    logger.info(f"  Standardized records: {len(df)}")
+    return df
+
+
+# ---------------------------------------------------------------------------
+# Unified Data Engineering Pipeline
+# ---------------------------------------------------------------------------
+
+def load_and_merge_datasets() -> pd.DataFrame:
+    """
+    Load all approved datasets and merge into a single unified DataFrame.
+
+    Returns:
+        Merged DataFrame with standardized columns.
 
     Raises:
-        FileNotFoundError: If the data directory or required files are missing.
+        FileNotFoundError: If no dataset files are found.
     """
     data_dir = get_data_dir()
+    raw_dir = data_dir / "raw"
     frames = []
 
-    for brand_name, filename in BRAND_FILE_MAP.items():
-        filepath = data_dir / filename
+    # Load Dataset A: CarDekho v3
+    cardekho_path = raw_dir / "cardekho_v3.csv"
+    if cardekho_path.exists():
+        df_a = load_cardekho_v3(cardekho_path)
+        frames.append(df_a)
+    else:
+        logger.warning(f"CarDekho v3 not found at {cardekho_path}")
 
-        # Handle legacy filenames
-        if not filepath.exists():
-            legacy_map = {
-                "hyundai.csv": "hyundi.csv",
-                "mercedes.csv": "merc.csv",
-            }
-            alt_name = legacy_map.get(filename, filename)
-            filepath = data_dir / alt_name
-
-        if filepath.exists():
-            df = load_single_brand(filepath, brand_name)
-            frames.append(df)
-        else:
-            logger.warning(f"File not found for {brand_name}: {filepath}")
+    # Load Dataset B: Kasliwal multi-city
+    kasliwal_path = raw_dir / "kasliwal_train.csv"
+    if kasliwal_path.exists():
+        df_b = load_kasliwal_multicity(kasliwal_path)
+        frames.append(df_b)
+    else:
+        logger.warning(f"Kasliwal multi-city not found at {kasliwal_path}")
 
     if not frames:
-        raise FileNotFoundError("No dataset files were loaded successfully.")
+        raise FileNotFoundError(
+            "No dataset files found. Ensure CSV files are in 'data/raw/'."
+        )
 
     merged = pd.concat(frames, ignore_index=True)
     logger.info(
-        f"Total merged dataset: {len(merged)} records, {merged['brand'].nunique()} brands"
+        f"Merged dataset: {len(merged)} records from {len(frames)} sources, "
+        f"{merged['brand'].nunique()} brands"
     )
     return merged
 
 
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Clean the merged dataset by handling missing values,
-    removing duplicates, and filtering outliers.
+    Clean the merged dataset with domain-aware rules for Indian used cars.
+
+    Steps:
+        1. Remove exact duplicates
+        2. Remove records with invalid/missing critical fields
+        3. Remove unrealistic price values
+        4. Remove unrealistic mileage (km_driven) values
+        5. Remove unrealistic year values
+        6. Handle missing numeric values with brand-aware median imputation
+        7. Standardize brand names
+        8. Remove near-duplicate listings
 
     Args:
         df: Raw merged DataFrame.
 
     Returns:
-        Cleaned DataFrame ready for feature engineering.
+        Cleaned DataFrame.
     """
     initial_rows = len(df)
+    logger.info(f"Starting cleaning: {initial_rows} records")
 
-    # Drop duplicates
+    # Step 1: Remove exact duplicates
     df = df.drop_duplicates()
-    logger.info(f"Removed {initial_rows - len(df)} duplicate rows")
+    dupes_removed = initial_rows - len(df)
+    logger.info(f"  Removed {dupes_removed} exact duplicates")
 
-    # Select only the columns we need
-    required_cols = [
-        "brand",
-        "model",
-        "year",
-        "price",
-        "transmission",
-        "mileage",
-        "fuelType",
-        "mpg",
-        "engineSize",
-    ]
-    # Keep only columns that exist
-    available_cols = [c for c in required_cols if c in df.columns]
-    df = df[available_cols].copy()
+    # Step 2: Remove records missing critical fields
+    critical_cols = ["brand", "model", "year", "selling_price", "km_driven",
+                     "fuel_type", "transmission"]
+    before = len(df)
+    df = df.dropna(subset=critical_cols)
+    df = df[df["brand"] != "Unknown"]
+    df = df[df["model"] != "Unknown"]
+    logger.info(f"  Removed {before - len(df)} records with missing critical fields")
 
-    # Handle missing values
-    # Numerical columns: fill with median
-    for col in ["mileage", "mpg", "engineSize", "year", "price"]:
-        if col in df.columns and df[col].isnull().sum() > 0:
-            median_val = df[col].median()
-            df[col].fillna(median_val, inplace=True)
-            logger.info(f"Filled {col} NaN values with median: {median_val}")
+    # Step 3: Remove unrealistic prices
+    # Indian used-car prices: ₹20,000 (very old/damaged) to ₹2 Crore (luxury)
+    before = len(df)
+    df = df[(df["selling_price"] >= 20_000) & (df["selling_price"] <= 2_00_00_000)]
+    logger.info(f"  Removed {before - len(df)} records with unrealistic prices")
 
-    # Categorical columns: fill with mode
-    for col in ["transmission", "fuelType"]:
-        if col in df.columns and df[col].isnull().sum() > 0:
-            mode_val = df[col].mode()[0]
-            df[col].fillna(mode_val, inplace=True)
-            logger.info(f"Filled {col} NaN values with mode: {mode_val}")
+    # Step 4: Remove unrealistic mileage
+    # Reasonable range: 100 km (nearly new) to 10,00,000 km (commercial vehicles)
+    before = len(df)
+    df = df[(df["km_driven"] >= 100) & (df["km_driven"] <= 10_00_000)]
+    logger.info(f"  Removed {before - len(df)} records with unrealistic km_driven")
 
-    # Drop rows where 'model' or 'brand' is missing
-    df.dropna(subset=["model", "brand"], inplace=True)
+    # Step 5: Remove unrealistic years
+    before = len(df)
+    df = df[(df["year"] >= 1995) & (df["year"] <= CURRENT_YEAR)]
+    logger.info(f"  Removed {before - len(df)} records with unrealistic year")
 
-    # Remove rows with zero or negative prices
-    df = df[df["price"] > 0].copy()
+    # Step 6: Handle missing numeric values — brand-aware median imputation
+    for col in ["mileage_kmpl", "engine_cc", "max_power_bhp", "seats"]:
+        if col in df.columns:
+            missing_count = df[col].isnull().sum()
+            if missing_count > 0:
+                # Use brand-level median, falling back to global median
+                brand_medians = df.groupby("brand")[col].transform("median")
+                global_median = df[col].median()
+                df[col] = df[col].fillna(brand_medians).fillna(global_median)
+                logger.info(
+                    f"  Imputed {missing_count} missing {col} values "
+                    f"(brand-median, fallback global median: {global_median:.1f})"
+                )
 
-    # Remove extreme outliers using IQR for price
-    q1 = df["price"].quantile(0.01)
-    q99 = df["price"].quantile(0.99)
-    df = df[(df["price"] >= q1) & (df["price"] <= q99)].copy()
+    # Step 7: Standardize brand names
+    df["brand"] = df["brand"].apply(
+        lambda x: BRAND_NORMALIZE.get(x, x)
+    )
 
-    # Remove rows with zero engine size
-    df = df[df["engineSize"] > 0].copy()
+    # Step 8: Remove near-duplicate listings (same brand+model+year+km within 5%)
+    before = len(df)
+    df = df.sort_values("selling_price")
+    df["_dedup_key"] = (
+        df["brand"] + "|" + df["model"] + "|" +
+        df["year"].astype(str) + "|" +
+        df["fuel_type"] + "|" + df["transmission"]
+    )
+    # For same key, remove records with km_driven within 2% and price within 5%
+    mask = pd.Series(True, index=df.index)
+    seen = {}
+    for idx, row in df.iterrows():
+        key = row["_dedup_key"]
+        km = row["km_driven"]
+        price = row["selling_price"]
+        if key in seen:
+            for (prev_km, prev_price) in seen[key]:
+                km_close = abs(km - prev_km) < max(500, 0.02 * prev_km)
+                price_close = abs(price - prev_price) < 0.05 * prev_price
+                if km_close and price_close:
+                    mask[idx] = False
+                    break
+            if mask[idx]:
+                seen[key].append((km, price))
+        else:
+            seen[key] = [(km, price)]
 
-    logger.info(f"Cleaned dataset: {len(df)} records remaining")
+    df = df[mask].drop(columns=["_dedup_key"])
+    logger.info(f"  Removed {before - len(df)} near-duplicate listings")
+
+    # Step 9: Statistical outlier removal using IQR per brand for price
+    before = len(df)
+    clean_frames = []
+    for brand, group in df.groupby("brand"):
+        if len(group) < 10:
+            # Too few samples — keep all
+            clean_frames.append(group)
+            continue
+        q1 = group["selling_price"].quantile(0.02)
+        q99 = group["selling_price"].quantile(0.98)
+        filtered = group[
+            (group["selling_price"] >= q1) & (group["selling_price"] <= q99)
+        ]
+        clean_frames.append(filtered)
+    df = pd.concat(clean_frames, ignore_index=True)
+    logger.info(f"  Removed {before - len(df)} brand-level price outliers")
+
+    logger.info(f"Cleaning complete: {len(df)} records remaining "
+                f"({initial_rows - len(df)} removed total)")
+    return df
+
+
+def create_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create engineered features for the Indian market dataset.
+
+    Features created:
+        - car_age: Vehicle age in years (CURRENT_YEAR - year)
+        - km_per_year: Average annual usage in kilometers
+        - premium_brand_flag: 1 for premium brands, 0 otherwise
+        - price_inr: Alias for selling_price (backward compatibility)
+        - mileage: Alias for km_driven (backward compatibility)
+        - engineSize: engine_cc / 1000 (backward compatibility, in litres)
+        - mpg: mileage_kmpl (backward compatibility alias)
+        - fuelType: Alias for fuel_type (backward compatibility)
+
+    Args:
+        df: Cleaned DataFrame.
+
+    Returns:
+        DataFrame with additional engineered features.
+    """
+    df = df.copy()
+
+    # Core features
+    df["car_age"] = CURRENT_YEAR - df["year"]
+    df["car_age"] = df["car_age"].clip(lower=0)
+
+    # Average km per year
+    df["km_per_year"] = df["km_driven"] / df["car_age"].replace(0, 0.5)
+
+    # Premium brand flag
+    df["premium_brand_flag"] = df["brand"].apply(
+        lambda x: 1 if x in PREMIUM_BRANDS else 0
+    )
+
+    # Backward compatibility aliases
+    df["price_inr"] = df["selling_price"]
+    df["mileage"] = df["km_driven"]
+    df["mpg"] = df["mileage_kmpl"].fillna(0)
+    df["engineSize"] = (df["engine_cc"].fillna(0) / 1000).round(1)
+    df["fuelType"] = df["fuel_type"]
+
+    # Strip whitespace from string columns
+    for col in ["brand", "model", "transmission", "fuel_type", "fuelType"]:
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.strip()
+
+    logger.info(
+        f"Created features. car_age range: {df['car_age'].min()}-{df['car_age'].max()} years, "
+        f"brands: {df['brand'].nunique()}, models: {df['model'].nunique()}"
+    )
+
     return df
 
 
 def convert_price_to_inr(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Convert prices from British Pounds (£) to Indian Rupees (₹).
+    Ensure price_inr column exists (identity for Indian data).
+
+    In DRIVEIQ v1, this converted GBP to INR with multipliers.
+    In DRIVEIQ v2, prices are already in INR — this is a no-op for compatibility.
 
     Args:
-        df: DataFrame with 'price' column in GBP.
+        df: DataFrame with selling_price in INR.
 
     Returns:
-        DataFrame with new 'price_inr' column.
+        DataFrame with price_inr column (same as selling_price).
     """
-    df["price_inr"] = df["price"] * EXCHANGE_RATE
-
-    # Apply Indian market brand-specific multipliers
-    def get_multiplier(brand):
-        # Fallback to 1.5 if brand not exactly matched
-        return INDIAN_MARKET_MULTIPLIERS.get(brand, 1.5)
-
-    df["market_multiplier"] = df["brand"].apply(get_multiplier)
-    df["price_inr"] = df["price_inr"] * df["market_multiplier"]
-    df.drop(columns=["market_multiplier"], inplace=True)
-
+    if "price_inr" not in df.columns:
+        df["price_inr"] = df["selling_price"]
     logger.info(
-        f"Converted prices to INR with brand multipliers. "
-        f"Range: ₹{df['price_inr'].min():,.0f} - ₹{df['price_inr'].max():,.0f}"
+        f"Prices verified in INR. "
+        f"Range: ₹{df['price_inr'].min():,.0f} – ₹{df['price_inr'].max():,.0f}"
     )
     return df
 
 
 def prepare_data() -> pd.DataFrame:
     """
-    Complete data preparation pipeline: load, merge, clean, and convert.
+    Complete data preparation pipeline: load, merge, clean, and create features.
 
     Returns:
-        Fully prepared DataFrame ready for feature engineering.
+        Fully prepared DataFrame ready for feature engineering and training.
     """
     df = load_and_merge_datasets()
     df = clean_data(df)
@@ -211,46 +587,9 @@ def prepare_data() -> pd.DataFrame:
     return df
 
 
-def create_features(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Create engineered features from the raw dataset.
-
-    Features created:
-        - car_age: Age of the car (CURRENT_YEAR - year)
-
-    Args:
-        df: Cleaned DataFrame with price_inr column.
-
-    Returns:
-        DataFrame with additional engineered features.
-    """
-    df = df.copy()
-
-    # Create car_age feature
-    df["car_age"] = CURRENT_YEAR - df["year"]
-    df["car_age"] = df["car_age"].clip(lower=0)  # ensure non-negative
-
-    # Create km_per_year feature (converting miles to km)
-    # 1 mile = 1.60934 km
-    km_driven = df["mileage"] * 1.60934
-    df["km_per_year"] = km_driven / df["car_age"].replace(0, 0.5)
-
-    # Create premium_brand_flag
-    df["premium_brand_flag"] = df["brand"].apply(
-        lambda x: 1 if x in PREMIUM_BRANDS else 0
-    )
-
-    logger.info(
-        f"Created car_age feature. Range: {df['car_age'].min()} - {df['car_age'].max()} years"
-    )
-
-    # Strip whitespace from string columns
-    for col in ["brand", "model", "transmission", "fuelType"]:
-        if col in df.columns:
-            df[col] = df[col].astype(str).str.strip()
-
-    return df
-
+# ---------------------------------------------------------------------------
+# Feature / Target Splitting
+# ---------------------------------------------------------------------------
 
 def get_feature_target_split(
     df: pd.DataFrame,
@@ -279,14 +618,14 @@ def build_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
     Build a ColumnTransformer for preprocessing features.
 
     Uses:
-        - OneHotEncoder for categorical features (brand, model, transmission, fuelType)
+        - OneHotEncoder for categorical features
         - StandardScaler for numerical features
 
     Args:
         X: Feature matrix to determine available columns.
 
     Returns:
-        Fitted-ready ColumnTransformer.
+        ColumnTransformer ready to fit.
     """
     cat_features = [c for c in CATEGORICAL_FEATURES if c in X.columns]
     num_features = [c for c in NUMERICAL_FEATURES if c in X.columns]

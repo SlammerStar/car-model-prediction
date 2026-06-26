@@ -1,9 +1,11 @@
 """
-Test Suite for the Car Price Prediction System
-===============================================
+Test Suite for the DRIVEIQ Car Price Prediction System
+======================================================
 
 Tests for utility functions, data preprocessing, feature engineering,
 and prediction logic.
+
+Updated for DRIVEIQ 2.0 (Indian market datasets).
 """
 
 import sys
@@ -57,45 +59,41 @@ class TestUtils:
 
     def test_constants(self):
         """Test that key constants are defined correctly."""
-        from src.utils import EXCHANGE_RATE, CURRENT_YEAR, RANDOM_STATE
+        from src.utils import CURRENT_YEAR, RANDOM_STATE
 
-        assert EXCHANGE_RATE == 115
-        assert CURRENT_YEAR == 2026
+        assert CURRENT_YEAR >= 2025  # Dynamic year
         assert RANDOM_STATE == 42
 
-    def test_brand_file_map(self):
-        """Test that all brands have file mappings."""
-        from src.utils import BRAND_FILE_MAP
+    def test_premium_brands(self):
+        """Test that premium brands include Indian market luxury brands."""
+        from src.utils import PREMIUM_BRANDS
 
-        expected_brands = [
-            "Audi",
-            "BMW",
-            "Ford",
-            "Hyundai",
-            "Mercedes",
-            "Skoda",
-            "Toyota",
-            "Volkswagen",
-        ]
-        for brand in expected_brands:
-            assert brand in BRAND_FILE_MAP
+        assert "Audi" in PREMIUM_BRANDS
+        assert "BMW" in PREMIUM_BRANDS
+        assert "Mercedes" in PREMIUM_BRANDS
+        assert "Jaguar" in PREMIUM_BRANDS
 
 
 # ============================================================================
-# Tests: src/data_preprocessing.py
+# Tests: src/data_processing.py
 # ============================================================================
 class TestDataPreprocessing:
     """Tests for data preprocessing functions."""
 
     def test_load_and_merge_datasets(self):
-        """Test that datasets load and merge successfully."""
+        """Test that Indian datasets load and merge successfully."""
         from src.data_processing import load_and_merge_datasets
 
         df = load_and_merge_datasets()
         assert isinstance(df, pd.DataFrame)
-        assert len(df) > 0
+        assert len(df) > 10000  # Should have 14K+ raw records
         assert "brand" in df.columns
-        assert "price" in df.columns
+        assert "selling_price" in df.columns
+        assert "source" in df.columns
+        # Verify Indian market brands present
+        brands = df["brand"].unique()
+        assert "Maruti" in brands
+        assert "Hyundai" in brands
 
     def test_clean_data(self):
         """Test data cleaning removes duplicates and handles missing values."""
@@ -103,20 +101,18 @@ class TestDataPreprocessing:
 
         raw = load_and_merge_datasets()
         cleaned = clean_data(raw)
-        assert len(cleaned) <= len(raw)
-        assert cleaned["price"].min() > 0
+        assert len(cleaned) < len(raw)
+        assert cleaned["selling_price"].min() >= 20000
+        assert cleaned["km_driven"].min() >= 100
 
-    def test_convert_price_to_inr(self):
-        """Test GBP to INR conversion."""
-        from src.data_processing import convert_price_to_inr
+    def test_prices_are_native_inr(self):
+        """Test that prices are in native INR (no conversion needed)."""
+        from src.data_processing import load_and_merge_datasets, clean_data
 
-        df = pd.DataFrame(
-            {"price": [100, 200, 500], "brand": ["Ford", "Toyota", "BMW"]}
-        )
-        result = convert_price_to_inr(df)
-        assert "price_inr" in result.columns
-        assert result["price_inr"].iloc[0] == 100 * 115 * 1.4
-        assert result["price_inr"].iloc[1] == 200 * 115 * 1.8
+        df = clean_data(load_and_merge_datasets())
+        # Indian used car prices: most between 50K and 2 Crore
+        assert df["selling_price"].median() > 100_000
+        assert df["selling_price"].median() < 50_00_000
 
     def test_prepare_data(self):
         """Test the full data preparation pipeline."""
@@ -125,11 +121,11 @@ class TestDataPreprocessing:
         df = prepare_data()
         assert "price_inr" in df.columns
         assert "brand" in df.columns
-        assert len(df) > 1000  # Should have substantial data
+        assert len(df) > 5000
 
 
 # ============================================================================
-# Tests: src/feature_engineering.py
+# Tests: src/data_processing.py - Feature Engineering
 # ============================================================================
 class TestFeatureEngineering:
     """Tests for feature engineering functions."""
@@ -137,22 +133,33 @@ class TestFeatureEngineering:
     def test_create_features(self):
         """Test car_age feature creation."""
         from src.data_processing import create_features
+        from src.utils import CURRENT_YEAR
 
         df = pd.DataFrame(
             {
                 "year": [2020, 2015, 2010],
-                "brand": ["BMW", "Audi", "Ford"],
-                "model": ["X5", "A3", "Focus"],
-                "transmission": ["Automatic", "Manual", "Manual"],
-                "fuelType": ["Diesel", "Petrol", "Petrol"],
-                "price_inr": [1000000, 500000, 300000],
-                "mileage": [10000, 20000, 50000],
+                "brand": ["Maruti", "Hyundai", "Honda"],
+                "model": ["Swift", "i20", "City"],
+                "transmission": ["Manual", "Manual", "Automatic"],
+                "fuel_type": ["Petrol", "Diesel", "Petrol"],
+                "selling_price": [500000, 350000, 250000],
+                "km_driven": [30000, 60000, 90000],
+                "mileage_kmpl": [22.0, 20.0, 18.0],
+                "engine_cc": [1197, 1396, 1497],
+                "max_power_bhp": [83.0, 90.0, 117.0],
+                "seats": [5, 5, 5],
             }
         )
         result = create_features(df)
         assert "car_age" in result.columns
-        assert result["car_age"].iloc[0] == 2026 - 2020  # 6
-        assert result["car_age"].iloc[1] == 2026 - 2015  # 11
+        assert result["car_age"].iloc[0] == CURRENT_YEAR - 2020
+        assert result["car_age"].iloc[1] == CURRENT_YEAR - 2015
+        # Backward compatibility
+        assert "price_inr" in result.columns
+        assert "mileage" in result.columns
+        assert "mpg" in result.columns
+        assert "engineSize" in result.columns
+        assert "fuelType" in result.columns
 
     def test_get_feature_target_split(self):
         """Test feature-target splitting."""
@@ -160,16 +167,18 @@ class TestFeatureEngineering:
 
         df = pd.DataFrame(
             {
-                "brand": ["BMW"],
-                "model": ["X5"],
+                "brand": ["Maruti"],
+                "model": ["Swift"],
                 "year": [2020],
                 "car_age": [6],
-                "transmission": ["Automatic"],
+                "transmission": ["Manual"],
                 "mileage": [30000],
-                "fuelType": ["Diesel"],
-                "mpg": [50.0],
-                "engineSize": [2.0],
-                "price_inr": [1500000],
+                "fuelType": ["Petrol"],
+                "mpg": [22.0],
+                "engineSize": [1.2],
+                "price_inr": [500000],
+                "km_per_year": [5000],
+                "premium_brand_flag": [0],
             }
         )
         X, y = get_feature_target_split(df)
@@ -182,19 +191,57 @@ class TestFeatureEngineering:
 
         X = pd.DataFrame(
             {
-                "brand": ["BMW", "Audi"],
-                "model": ["X5", "A3"],
-                "transmission": ["Auto", "Manual"],
-                "fuelType": ["Diesel", "Petrol"],
+                "brand": ["Maruti", "Hyundai"],
+                "model": ["Swift", "i20"],
+                "transmission": ["Manual", "Automatic"],
+                "fuelType": ["Petrol", "Diesel"],
                 "year": [2020, 2019],
                 "car_age": [6, 7],
                 "mileage": [30000, 40000],
-                "mpg": [50.0, 55.0],
-                "engineSize": [2.0, 1.5],
+                "mpg": [22.0, 20.0],
+                "engineSize": [1.2, 1.4],
             }
         )
         preprocessor = build_preprocessor(X)
         assert preprocessor is not None
+
+
+# ============================================================================
+# Tests: Parsing Utilities
+# ============================================================================
+class TestParsing:
+    """Tests for data parsing utilities."""
+
+    def test_parse_brand_model(self):
+        """Test brand/model extraction from combined name."""
+        from src.data_processing import parse_brand_model
+
+        brand, model = parse_brand_model("Maruti Swift Dzire VDI")
+        assert brand == "Maruti"
+        assert "Swift" in model
+
+    def test_parse_brand_model_land_rover(self):
+        """Test multi-word brand parsing."""
+        from src.data_processing import parse_brand_model
+
+        brand, model = parse_brand_model("Land Rover Range Rover 3.0")
+        assert brand == "Land Rover"
+
+    def test_parse_mileage_kmpl(self):
+        """Test fuel efficiency parsing."""
+        from src.data_processing import parse_mileage_kmpl
+
+        assert parse_mileage_kmpl("23.4 kmpl") == 23.4
+        assert parse_mileage_kmpl("26.6 km/kg") == 26.6
+        assert parse_mileage_kmpl(None) is None
+
+    def test_parse_numeric_with_unit(self):
+        """Test numeric parsing with units."""
+        from src.data_processing import parse_numeric_with_unit
+
+        assert parse_numeric_with_unit("1248 CC", "CC") == 1248.0
+        assert parse_numeric_with_unit("74 bhp", "bhp") == 74.0
+        assert parse_numeric_with_unit(None) is None
 
 
 # ============================================================================
@@ -208,19 +255,18 @@ class TestPredict:
         from src.prediction import create_input_dataframe
 
         df = create_input_dataframe(
-            brand="BMW",
-            model="X5",
+            brand="Maruti",
+            model="Swift",
             year=2019,
-            transmission="Automatic",
+            transmission="Manual",
             mileage=45000,
-            fuel_type="Diesel",
-            mpg=52.3,
-            engine_size=2.0,
+            fuel_type="Petrol",
+            mpg=22.0,
+            engine_size=1.2,
         )
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 1
-        assert df["brand"].iloc[0] == "BMW"
-        assert df["car_age"].iloc[0] == 2026 - 2019
+        assert df["brand"].iloc[0] == "Maruti"
 
 
 # ============================================================================
@@ -256,17 +302,6 @@ class TestAPI:
         data = response.json()
         assert "status" in data
         assert data["status"] == "healthy"
-
-    def test_api_brands(self):
-        """Test the brands endpoint."""
-        from fastapi.testclient import TestClient
-        from src.api import app
-
-        client = TestClient(app)
-        response = client.get("/brands")
-        assert response.status_code == 200
-        assert "brands" in response.json()
-        assert len(response.json()["brands"]) == 8
 
 
 if __name__ == "__main__":

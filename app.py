@@ -51,26 +51,46 @@ st.set_page_config(
 # Brand Logos (inline SVG / image URLs)
 # ---------------------------------------------------------------------------
 BRAND_LOGOS = {
-    "Audi": "https://www.carlogos.org/car-logos/audi-logo-2016-640.png",
-    "BMW": "https://www.carlogos.org/car-logos/bmw-logo-2020-grey-640.png",
-    "Ford": "https://www.carlogos.org/car-logos/ford-logo-2017-640.png",
+    "Maruti": "https://www.carlogos.org/car-logos/suzuki-logo-640.png",
     "Hyundai": "https://www.carlogos.org/car-logos/hyundai-logo-2011-640.png",
-    "Mercedes": "https://www.carlogos.org/car-logos/mercedes-benz-logo-2011-640.png",
-    "Skoda": "https://www.carlogos.org/car-logos/skoda-logo-2016-640.png",
+    "Honda": "https://www.carlogos.org/car-logos/honda-logo-2000-640.png",
     "Toyota": "https://www.carlogos.org/car-logos/toyota-logo-2020-europe-640.png",
+    "Mahindra": "https://www.carlogos.org/car-logos/mahindra-logo-640.png",
+    "Tata": "https://www.carlogos.org/car-logos/tata-logo-640.png",
+    "Ford": "https://www.carlogos.org/car-logos/ford-logo-2017-640.png",
     "Volkswagen": "https://www.carlogos.org/car-logos/volkswagen-logo-2019-640.png",
+    "Mercedes": "https://www.carlogos.org/car-logos/mercedes-benz-logo-2011-640.png",
+    "BMW": "https://www.carlogos.org/car-logos/bmw-logo-2020-grey-640.png",
+    "Audi": "https://www.carlogos.org/car-logos/audi-logo-2016-640.png",
+    "Skoda": "https://www.carlogos.org/car-logos/skoda-logo-2016-640.png",
+    "Renault": "https://www.carlogos.org/car-logos/renault-logo-2021-640.png",
+    "Chevrolet": "https://www.carlogos.org/car-logos/chevrolet-logo-2013-640.png",
+    "Nissan": "https://www.carlogos.org/car-logos/nissan-logo-2020-640.png",
+    "Kia": "https://www.carlogos.org/car-logos/kia-logo-2021-640.png",
+    "Jaguar": "https://www.carlogos.org/car-logos/jaguar-logo-640.png",
+    "Volvo": "https://www.carlogos.org/car-logos/volvo-logo-2014-640.png",
 }
 
 # Car model images - curated per brand for realism
 BRAND_CAR_IMAGES = {
-    "Audi": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?q=80&w=800&auto=format&fit=crop",
-    "BMW": "https://images.unsplash.com/photo-1555215695-3004980ad54e?q=80&w=800&auto=format&fit=crop",
-    "Ford": "https://images.unsplash.com/photo-1551830820-330a71b99659?q=80&w=800&auto=format&fit=crop",
+    "Maruti": "https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=800&auto=format&fit=crop",
     "Hyundai": "https://images.unsplash.com/photo-1629897048514-3dd7414fe72a?q=80&w=800&auto=format&fit=crop",
-    "Mercedes": "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?q=80&w=800&auto=format&fit=crop",
-    "Skoda": "https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=800&auto=format&fit=crop",
+    "Honda": "https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?q=80&w=800&auto=format&fit=crop",
     "Toyota": "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?q=80&w=800&auto=format&fit=crop",
+    "Mahindra": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?q=80&w=800&auto=format&fit=crop",
+    "Tata": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?q=80&w=800&auto=format&fit=crop",
+    "Ford": "https://images.unsplash.com/photo-1551830820-330a71b99659?q=80&w=800&auto=format&fit=crop",
     "Volkswagen": "https://images.unsplash.com/photo-1622194992750-3f15b0a8266e?q=80&w=800&auto=format&fit=crop",
+    "Mercedes": "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?q=80&w=800&auto=format&fit=crop",
+    "BMW": "https://images.unsplash.com/photo-1555215695-3004980ad54e?q=80&w=800&auto=format&fit=crop",
+    "Audi": "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?q=80&w=800&auto=format&fit=crop",
+    "Skoda": "https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=800&auto=format&fit=crop",
+    "Renault": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?q=80&w=800&auto=format&fit=crop",
+    "Chevrolet": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?q=80&w=800&auto=format&fit=crop",
+    "Nissan": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?q=80&w=800&auto=format&fit=crop",
+    "Jaguar": "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?q=80&w=800&auto=format&fit=crop",
+    "Volvo": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?q=80&w=800&auto=format&fit=crop",
+    "Kia": "https://images.unsplash.com/photo-1629897048514-3dd7414fe72a?q=80&w=800&auto=format&fit=crop",
 }
 
 SIMILAR_CAR_IMAGES = [
@@ -781,11 +801,11 @@ if page == "Predict Price":
             "Manufacturing Year",
             min_value=1996,
             max_value=int(CURRENT_YEAR),
-            value=2021,
+            value=2018,
         )
     with r1c3:
         mpg = st.number_input(
-            "Fuel Efficiency (km/l)",
+            "Mileage (kmpl)",
             min_value=0.0,
             max_value=100.0,
             value=float(df["mpg"].median()),
@@ -808,7 +828,7 @@ if page == "Predict Price":
         fuel_type = st.selectbox("Fuel Type", sorted(df["fuelType"].unique()))
     with r3c2:
         mileage = st.number_input(
-            "Mileage (kms)", min_value=0, max_value=500000, value=30000, step=1000
+            "Kilometers Driven", min_value=0, max_value=500000, value=30000, step=1000
         )
     with r3c3:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)

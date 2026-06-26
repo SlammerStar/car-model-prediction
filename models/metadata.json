@@ -1,9 +1,9 @@
 {
   "best_model": "Decision Tree",
   "tuned_metrics": {
-    "R2_Score": 0.9502,
-    "MAE": 456018.17,
-    "RMSE": 713395.43
+    "R2_Score": 0.8549,
+    "MAE": 136178.2,
+    "RMSE": 310567.95
   },
   "best_params": {
     "ccp_alpha": "0.0",
@@ -19,8 +19,8 @@
     "random_state": "42",
     "splitter": "best"
   },
-  "n_training_samples": 66036,
-  "n_test_samples": 16509,
+  "n_training_samples": 9713,
+  "n_test_samples": 2429,
   "features": {
     "categorical": [
       "brand",
@@ -33,15 +33,23 @@
       "car_age",
       "mileage",
       "mpg",
-      "engineSize"
+      "engineSize",
+      "km_per_year",
+      "premium_brand_flag"
     ]
   },
   "comparison": [
     {
       "Model": "Decision Tree",
-      "R2_Score": 0.9502,
-      "MAE": 456018.17,
-      "RMSE": 713395.43
+      "R2_Score": 0.8549,
+      "MAE": 136178.2,
+      "RMSE": 310567.95
     }
-  ]
+  ],
+  "dataset_version": "2.0",
+  "data_sources": [
+    "cardekho_v3",
+    "kasliwal_multicity"
+  ],
+  "total_records": 12142
 }

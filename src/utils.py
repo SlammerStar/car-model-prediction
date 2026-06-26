@@ -1,13 +1,16 @@
 """
-Utility functions and constants for the Car Price Prediction System.
+Utility functions and constants for the DRIVEIQ Valuation System.
 
 This module contains shared constants, helper functions for price formatting,
 model persistence, and path management used across the entire application.
+
+DRIVEIQ 2.0: Updated for native Indian market data (INR, kilometers, kmpl).
 """
 
 import joblib
 import logging
 from pathlib import Path
+from datetime import datetime
 
 # ---------------------------------------------------------------------------
 # Logging Configuration
@@ -34,22 +37,17 @@ for d in [MODELS_DIR, IMAGES_DIR]:
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-EXCHANGE_RATE = 115  # GBP to INR conversion rate
-CURRENT_YEAR = 2026  # Reference year for car_age calculation
+CURRENT_YEAR = datetime.now().year  # Dynamic instead of hardcoded (fixes W24)
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
 
-# Brand-to-filename mapping
-BRAND_FILE_MAP = {
-    "Audi": "audi.csv",
-    "BMW": "bmw.csv",
-    "Ford": "ford.csv",
-    "Hyundai": "hyundai.csv",
-    "Mercedes": "mercedes.csv",
-    "Skoda": "skoda.csv",
-    "Toyota": "toyota.csv",
-    "Volkswagen": "vw.csv",
-}
+# ---------------------------------------------------------------------------
+# Indian Market Configuration (DRIVEIQ 2.0)
+# ---------------------------------------------------------------------------
+# Premium brands in the Indian market — used for premium_brand_flag feature
+PREMIUM_BRANDS = ["Audi", "BMW", "Mercedes", "Jaguar", "Land Rover",
+                  "Lexus", "Volvo", "Porsche", "Mini", "Bentley",
+                  "Lamborghini"]
 
 # Feature column definitions
 CATEGORICAL_FEATURES = ["brand", "model", "transmission", "fuelType"]
@@ -64,27 +62,11 @@ NUMERICAL_FEATURES = [
 ]
 TARGET_COLUMN = "price_inr"
 
-# Model save path
+# Model save paths
 MODEL_PATH = MODELS_DIR / "model.pkl"
 PIPELINE_PATH = MODELS_DIR / "pipeline.pkl"
 RECOMMENDER_PATH = MODELS_DIR / "recommender.pkl"
 METADATA_PATH = MODELS_DIR / "metadata.json"
-
-# Indian Market Calibration
-# UK used cars are typically cheaper. These multipliers adjust the base converted price
-# to reflect the heavy taxation and resale value trends in the Indian market.
-INDIAN_MARKET_MULTIPLIERS = {
-    "Audi": 2.8,
-    "BMW": 2.8,
-    "Mercedes": 2.9,
-    "Toyota": 1.8,
-    "Ford": 1.4,
-    "Hyundai": 1.3,
-    "Volkswagen": 1.6,
-    "Skoda": 1.6,
-}
-
-PREMIUM_BRANDS = ["Audi", "BMW", "Mercedes"]
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +74,7 @@ PREMIUM_BRANDS = ["Audi", "BMW", "Mercedes"]
 # ---------------------------------------------------------------------------
 def format_price_inr(price: float) -> str:
     """
-    Format a price in INR to the Indian Lakhs notation.
+    Format a price in INR to the Indian Lakhs/Crores notation.
 
     Args:
         price: Price in Indian Rupees (raw number).
@@ -147,16 +129,22 @@ def load_model(path: Path = MODEL_PATH):
 
 def get_data_dir() -> Path:
     """
-    Determine the correct data directory, checking both new and legacy paths.
+    Determine the correct data directory.
+
+    Checks for the standard 'data/' directory with raw subdirectory,
+    then falls back to legacy paths.
 
     Returns:
-        Path to the directory containing the CSV files.
+        Path to the directory containing the data files.
     """
-    if DATA_DIR.exists() and any(DATA_DIR.glob("*.csv")):
+    raw_dir = DATA_DIR / "raw"
+    if raw_dir.exists() and any(raw_dir.glob("*.csv")):
+        return DATA_DIR
+    elif DATA_DIR.exists() and any(DATA_DIR.glob("*.csv")):
         return DATA_DIR
     elif DATASETS_DIR.exists() and any(DATASETS_DIR.glob("*.csv")):
         return DATASETS_DIR
     else:
         raise FileNotFoundError(
-            "No data directory found. Ensure CSV files are in 'data/' or 'Datasets/'."
+            "No data directory found. Ensure CSV files are in 'data/raw/'."
         )

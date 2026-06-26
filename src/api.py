@@ -25,11 +25,10 @@ from pydantic import BaseModel, Field
 from src.prediction import predict_price
 from src.utils import (
     PIPELINE_PATH,
-    BRAND_FILE_MAP,
     load_model,
     logger,
 )
-from src.data_processing import load_and_merge_datasets
+from src.data_processing import load_and_merge_datasets, clean_data
 
 # ---------------------------------------------------------------------------
 # App Initialization
@@ -43,7 +42,7 @@ app = FastAPI(
         "Predict premium used car prices across multiple brands. "
         "Built with scikit-learn pipelines, featuring advanced ML models and market adaptations."
     ),
-    version="1.0.0",
+    version="2.0.0",
     contact={
         "name": "Pratham Nigam",
     },
@@ -84,24 +83,24 @@ class CarInput(BaseModel):
 
     brand: str = Field(..., description="Car brand name")
     model: str = Field(..., description="Car model name")
-    year: int = Field(..., ge=1990, le=2026, description="Manufacturing year")
-    transmission: str = Field(..., description="Transmission type")
-    mileage: int = Field(..., ge=0, description="Odometer reading in miles")
-    fuelType: str = Field(..., description="Fuel type")
-    mpg: float = Field(..., ge=0, description="Miles per gallon")
+    year: int = Field(..., ge=1990, le=2030, description="Manufacturing year")
+    transmission: str = Field(..., description="Transmission type (Manual/Automatic)")
+    mileage: int = Field(..., ge=0, description="Kilometers driven")
+    fuelType: str = Field(..., description="Fuel type (Petrol/Diesel/CNG/LPG/Electric)")
+    mpg: float = Field(..., ge=0, description="Fuel efficiency in kmpl")
     engineSize: float = Field(..., ge=0, description="Engine size in litres")
 
     model_config = {
         "json_schema_extra": {
             "example": {
-                "brand": "BMW",
-                "model": "X5",
-                "year": 2019,
-                "transmission": "Automatic",
+                "brand": "Maruti",
+                "model": "Swift Dzire VDI",
+                "year": 2018,
+                "transmission": "Manual",
                 "mileage": 45000,
                 "fuelType": "Diesel",
-                "mpg": 52.3,
-                "engineSize": 2.0,
+                "mpg": 23.4,
+                "engineSize": 1.2,
             }
         }
     }
@@ -129,7 +128,7 @@ class HealthResponse(BaseModel):
 
     status: str
     model_loaded: bool
-    version: str
+    version: str = "2.0.0"
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +150,7 @@ async def health_check():
     return HealthResponse(
         status="healthy",
         model_loaded=pipeline is not None,
-        version="1.0.0",
+        version="2.0.0",
     )
 
 
@@ -208,8 +207,14 @@ async def predict(car: CarInput):
 
 @app.get("/brands", tags=["Data"])
 async def get_brands():
-    """Get the list of available car brands."""
-    return {"brands": list(BRAND_FILE_MAP.keys())}
+    """Get the list of available car brands from the dataset."""
+    try:
+        df = load_and_merge_datasets()
+        df = clean_data(df)
+        brands = sorted(df["brand"].unique().tolist())
+        return {"brands": brands}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/models/{brand}", tags=["Data"])
