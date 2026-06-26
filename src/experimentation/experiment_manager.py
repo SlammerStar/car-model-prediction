@@ -1,14 +1,13 @@
 import json
 import pandas as pd
 from datetime import datetime
-from pathlib import Path
 
 from src.data_processing import prepare_data
 from src.experimentation.data_validator import DataValidator
 from src.experimentation.evaluator import ModelEvaluator
 from src.experimentation.optimizer import HyperparameterOptimizer
 from src.experimentation.registry import ModelRegistry
-from src.utils import TARGET_COLUMN, CATEGORICAL_FEATURES, NUMERICAL_FEATURES, logger
+from src.utils import TARGET_COLUMN, CATEGORICAL_FEATURES, logger
 
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler

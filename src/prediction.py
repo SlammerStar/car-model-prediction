@@ -51,7 +51,6 @@ from src.utils import (
     TEST_SIZE,
     PIPELINE_PATH,
     METADATA_PATH,
-    RECOMMENDER_PATH,
     IMAGES_DIR,
     CURRENT_YEAR,
     PREMIUM_BRANDS,
@@ -65,9 +64,6 @@ from src.data_processing import (
     prepare_data,
     prepare_features,
     create_features,
-    load_and_merge_datasets,
-    clean_data,
-    convert_price_to_inr,
 )
 
 warnings.filterwarnings("ignore", category=UserWarning)
