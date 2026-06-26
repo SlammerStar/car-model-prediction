@@ -126,9 +126,99 @@ class ExplanationEngine:
         positive_factors = positive_factors[:3]
         negative_factors = negative_factors[:3]
 
+        if not positive_factors and not negative_factors:
+            return self._generate_heuristic_explanations(X, base_value)
+
         return {
             "base_value": base_value,
             "top_positive_factors": positive_factors,
             "top_negative_factors": negative_factors,
             "raw_contributions": contributions,
+        }
+
+    def _generate_heuristic_explanations(
+        self, X: pd.DataFrame, base_value: float
+    ) -> Dict[str, Any]:
+        """
+        Fallback heuristic explanations if SHAP is unavailable or empty.
+        """
+        pos = []
+        neg = []
+
+        age = X.get("car_age", pd.Series([5])).iloc[0]
+        mileage = X.get("mileage", pd.Series([50000])).iloc[0]
+        premium = X.get("luxury_brand_flag", pd.Series([0])).iloc[0]
+
+        if age < 3:
+            pos.append(
+                {
+                    "feature": "Vehicle Age",
+                    "raw_feature": "car_age",
+                    "contribution": 50000.0,
+                    "explanation": "(Heuristic Estimate) Low vehicle age significantly preserves market value.",
+                }
+            )
+        elif age > 7:
+            neg.append(
+                {
+                    "feature": "Vehicle Age",
+                    "raw_feature": "car_age",
+                    "contribution": -50000.0,
+                    "explanation": "(Heuristic Estimate) Higher vehicle age accelerates depreciation.",
+                }
+            )
+
+        if mileage < 30000:
+            pos.append(
+                {
+                    "feature": "Odometer Mileage",
+                    "raw_feature": "mileage",
+                    "contribution": 30000.0,
+                    "explanation": "(Heuristic Estimate) Unusually low mileage provides a valuation premium.",
+                }
+            )
+        elif mileage > 80000:
+            neg.append(
+                {
+                    "feature": "Odometer Mileage",
+                    "raw_feature": "mileage",
+                    "contribution": -30000.0,
+                    "explanation": "(Heuristic Estimate) High accumulated mileage reduces the market value.",
+                }
+            )
+
+        if premium:
+            pos.append(
+                {
+                    "feature": "Premium Brand Status",
+                    "raw_feature": "luxury_brand_flag",
+                    "contribution": 100000.0,
+                    "explanation": "(Heuristic Estimate) Premium brand status elevates baseline market value.",
+                }
+            )
+
+        if not pos:
+            pos.append(
+                {
+                    "feature": "Market Baseline",
+                    "raw_feature": "baseline",
+                    "contribution": 1000.0,
+                    "explanation": "(Heuristic Estimate) Vehicle attributes align with stable market baselines.",
+                }
+            )
+        if not neg:
+            neg.append(
+                {
+                    "feature": "Standard Depreciation",
+                    "raw_feature": "depreciation",
+                    "contribution": -1000.0,
+                    "explanation": "(Heuristic Estimate) Standard usage and age-based depreciation applies.",
+                }
+            )
+
+        return {
+            "base_value": base_value,
+            "top_positive_factors": pos[:3],
+            "top_negative_factors": neg[:3],
+            "raw_contributions": {},
         }

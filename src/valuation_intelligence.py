@@ -85,21 +85,72 @@ class ValuationIntelligenceEngine:
 
         return lower_bound, upper_bound
 
-    def _assess_risks(self, input_features: pd.DataFrame) -> Dict[str, str]:
+    def _assess_risks(
+        self,
+        input_features: pd.DataFrame,
+        input_data: pd.DataFrame,
+        confidence_label: str,
+    ) -> Dict[str, str]:
         """
-        Provide risk assessment mapping.
+        Provide risk assessment mapping based on realistic market heuristics.
         """
         risk_config = self.config["risk_thresholds"]
 
-        owner_risk_score = input_features.get(
-            "owner_risk_score", pd.Series([0.0])
-        ).iloc[0]
-        market_risk_score = (
-            1.0 - input_features.get("market_stability_score", pd.Series([1.0])).iloc[0]
+        car_age = input_data.get("car_age", pd.Series([5])).iloc[0]
+        mileage = input_data.get("mileage", pd.Series([50000])).iloc[0]
+        engine_size = input_data.get("engine_size", pd.Series([1.2])).iloc[0]
+        brand = input_data.get("brand", pd.Series(["Unknown"])).iloc[0]
+
+        # Get Brand Knowledge
+        brand_info = {}
+        if self.knowledge_engine:
+            brand_info = self.knowledge_engine.get_brand_knowledge(brand)
+
+        reliability = brand_info.get("reliability", 0.65)
+        liquidity = brand_info.get("liquidity", 0.50)
+        is_premium = brand_info.get("premium", False)
+
+        # 1. Ownership Risk
+        # Explicitly handle missing owner count by inferring risk based on age & confidence
+        # Missing info penalty: if confidence is Low, ownership risk is higher
+        base_owner_risk = 0.2 if car_age <= 3 else (0.4 if car_age <= 7 else 0.6)
+        penalty = (
+            0.2
+            if confidence_label == "Low Confidence"
+            else (0.1 if confidence_label == "Medium Confidence" else 0.0)
         )
-        maintenance_risk_score = input_features.get(
-            "age_based_depreciation", pd.Series([0.0])
-        ).iloc[0]
+        owner_risk_score = min(1.0, base_owner_risk + penalty)
+
+        # 2. Market Risk
+        # Based on brand liquidity, popularity, and stability
+        stability = input_features.get("market_stability_score", pd.Series([0.5])).iloc[
+            0
+        ]
+        popularity = input_features.get("brand_popularity", pd.Series([0.5])).iloc[0]
+        # High liquidity + High stability + High popularity = Low Market Risk
+        market_strength = (liquidity * 0.5) + (stability * 0.3) + (popularity * 0.2)
+        market_risk_score = max(0.0, 1.0 - market_strength)
+
+        # 3. Maintenance Risk
+        # Based on reliability, age, mileage, premium status, and engine complexity
+        age_factor = min(1.0, car_age / 15.0)
+        mileage_factor = min(1.0, mileage / 150000.0)
+
+        # Engine complexity proxy: > 1.6L or premium brand usually means more complex/expensive maintenance
+        complexity_penalty = 0.15 if engine_size > 1.6 else 0.0
+        premium_penalty = 0.2 if is_premium else 0.0
+
+        # High reliability reduces risk
+        maintenance_risk_score = (
+            (age_factor * 0.4)
+            + (mileage_factor * 0.4)
+            + complexity_penalty
+            + premium_penalty
+        )
+        maintenance_risk_score = maintenance_risk_score * (
+            1.5 - reliability
+        )  # High reliability reduces the final score
+        maintenance_risk_score = min(1.0, max(0.0, maintenance_risk_score))
 
         def _get_level(score, r_type):
             if score >= risk_config[r_type]["high_min"]:
@@ -170,8 +221,7 @@ class ValuationIntelligenceEngine:
 
     def _generate_ai_summary(
         self,
-        brand: str,
-        model: str,
+        input_data: pd.DataFrame,
         predicted_price: float,
         confidence_label: str,
         market_position: str,
@@ -180,28 +230,46 @@ class ValuationIntelligenceEngine:
     ) -> str:
         """
         Generate a concise natural-language summary explaining the valuation.
+        1. Brief description of the vehicle.
+        2. Key positive valuation factors.
+        3. Key negative valuation factors.
+        4. Overall market conclusion.
         """
+        brand = input_data.get("brand", pd.Series(["Unknown"])).iloc[0]
+        model = input_data.get("model", pd.Series(["Unknown"])).iloc[0]
+        year = input_data.get("year", pd.Series([2023])).iloc[0]
+        mileage = input_data.get("mileage", pd.Series([50000])).iloc[0]
+
         price_str = format_price_inr(predicted_price)
-        summary = f"The {brand} {model} has an estimated market value of {price_str} with {confidence_label.lower()} confidence. "
 
-        if market_position == "Undervalued":
-            summary += "This configuration exhibits strong value retention and is currently positioned favorably in the market. "
-        elif market_position == "Overpriced":
-            summary += "This configuration is experiencing higher depreciation, positioning it as slightly overpriced relative to market baselines. "
-        else:
-            summary += (
-                "This vehicle is fairly aligned with current market expectations. "
-            )
+        # 1. Description
+        summary = f"The {year} {brand} {model} (driven {mileage:,} km) has an estimated market value of {price_str}. "
 
+        # 2. Positive
         if positive_factors:
-            best = positive_factors[0]["feature"].lower()
-            summary += f"The valuation is positively supported by its {best}. "
+            pos_features = [f["feature"].lower() for f in positive_factors[:2]]
+            if len(pos_features) > 1:
+                summary += f"This valuation is strongly supported by positive factors such as its {pos_features[0]} and {pos_features[1]}. "
+            else:
+                summary += (
+                    f"This valuation is positively supported by its {pos_features[0]}. "
+                )
 
+        # 3. Negative
         if negative_factors:
-            worst = negative_factors[0]["feature"].lower()
-            summary += (
-                f"However, the vehicle's {worst} limits its maximum resale potential."
-            )
+            neg_features = [f["feature"].lower() for f in negative_factors[:2]]
+            if len(neg_features) > 1:
+                summary += f"Conversely, its {neg_features[0]} and {neg_features[1]} present slight negative pressure on its maximum resale potential. "
+            else:
+                summary += f"However, the vehicle's {neg_features[0]} limits its maximum resale potential. "
+
+        # 4. Conclusion
+        if market_position == "Undervalued":
+            summary += f"Overall, this configuration exhibits strong value retention and is positioned as highly attractive relative to current market baselines with {confidence_label.lower()}."
+        elif market_position == "Overpriced":
+            summary += f"Overall, this specific configuration is experiencing higher depreciation, positioning it as slightly overpriced in the current market (evaluated with {confidence_label.lower()})."
+        else:
+            summary += f"Overall, this vehicle is fairly aligned with current market expectations and standard depreciation curves (evaluated with {confidence_label.lower()})."
 
         return summary
 
@@ -237,9 +305,6 @@ class ValuationIntelligenceEngine:
 
         predicted_price = max(0.0, float(predicted_price))
 
-        brand = input_data["brand"].iloc[0]
-        model = input_data["model"].iloc[0]
-
         # 2. Explainability
         explanation = {}
         if self.explanation_engine:
@@ -256,7 +321,7 @@ class ValuationIntelligenceEngine:
         )
 
         # 4. Market Position & Risk
-        risks = self._assess_risks(input_features)
+        risks = self._assess_risks(input_features, input_data, confidence_label)
         market_position = self._get_market_position(input_features)
         recommendation = self._get_recommendation(
             market_position, confidence_label, risks
@@ -267,8 +332,7 @@ class ValuationIntelligenceEngine:
         neg_factors = explanation.get("top_negative_factors", [])
 
         summary = self._generate_ai_summary(
-            brand,
-            model,
+            input_data,
             predicted_price,
             confidence_label,
             market_position,

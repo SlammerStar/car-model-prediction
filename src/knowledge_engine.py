@@ -10,8 +10,203 @@ class VehicleKnowledgeEngine:
     combinations of Brand -> Base Model -> Year -> Variant -> Fuel -> Transmission.
     """
 
+    BRAND_KNOWLEDGE = {
+        "Maruti Suzuki": {
+            "reliability": 0.85,
+            "liquidity": 0.95,
+            "maintenance_cost": "low",
+            "premium": False,
+        },
+        "Hyundai": {
+            "reliability": 0.80,
+            "liquidity": 0.85,
+            "maintenance_cost": "low",
+            "premium": False,
+        },
+        "Honda": {
+            "reliability": 0.90,
+            "liquidity": 0.80,
+            "maintenance_cost": "low",
+            "premium": False,
+        },
+        "Toyota": {
+            "reliability": 0.95,
+            "liquidity": 0.90,
+            "maintenance_cost": "medium",
+            "premium": False,
+        },
+        "Tata": {
+            "reliability": 0.70,
+            "liquidity": 0.75,
+            "maintenance_cost": "low",
+            "premium": False,
+        },
+        "Mahindra": {
+            "reliability": 0.75,
+            "liquidity": 0.80,
+            "maintenance_cost": "medium",
+            "premium": False,
+        },
+        "Ford": {
+            "reliability": 0.75,
+            "liquidity": 0.60,
+            "maintenance_cost": "medium",
+            "premium": False,
+        },
+        "Volkswagen": {
+            "reliability": 0.65,
+            "liquidity": 0.65,
+            "maintenance_cost": "high",
+            "premium": False,
+        },
+        "Skoda": {
+            "reliability": 0.60,
+            "liquidity": 0.60,
+            "maintenance_cost": "high",
+            "premium": False,
+        },
+        "BMW": {
+            "reliability": 0.60,
+            "liquidity": 0.40,
+            "maintenance_cost": "very high",
+            "premium": True,
+        },
+        "Audi": {
+            "reliability": 0.60,
+            "liquidity": 0.40,
+            "maintenance_cost": "very high",
+            "premium": True,
+        },
+        "Mercedes-Benz": {
+            "reliability": 0.65,
+            "liquidity": 0.45,
+            "maintenance_cost": "very high",
+            "premium": True,
+        },
+        "Volvo": {
+            "reliability": 0.70,
+            "liquidity": 0.30,
+            "maintenance_cost": "very high",
+            "premium": True,
+        },
+        "Jaguar": {
+            "reliability": 0.50,
+            "liquidity": 0.20,
+            "maintenance_cost": "very high",
+            "premium": True,
+        },
+        "Land Rover": {
+            "reliability": 0.40,
+            "liquidity": 0.25,
+            "maintenance_cost": "very high",
+            "premium": True,
+        },
+        "Porsche": {
+            "reliability": 0.70,
+            "liquidity": 0.15,
+            "maintenance_cost": "very high",
+            "premium": True,
+        },
+        "Lexus": {
+            "reliability": 0.90,
+            "liquidity": 0.20,
+            "maintenance_cost": "high",
+            "premium": True,
+        },
+        "Mini": {
+            "reliability": 0.65,
+            "liquidity": 0.25,
+            "maintenance_cost": "high",
+            "premium": True,
+        },
+        "Jeep": {
+            "reliability": 0.60,
+            "liquidity": 0.40,
+            "maintenance_cost": "high",
+            "premium": False,
+        },
+        "MG": {
+            "reliability": 0.65,
+            "liquidity": 0.55,
+            "maintenance_cost": "medium",
+            "premium": False,
+        },
+        "Kia": {
+            "reliability": 0.80,
+            "liquidity": 0.80,
+            "maintenance_cost": "medium",
+            "premium": False,
+        },
+        "Renault": {
+            "reliability": 0.65,
+            "liquidity": 0.65,
+            "maintenance_cost": "medium",
+            "premium": False,
+        },
+        "Nissan": {
+            "reliability": 0.70,
+            "liquidity": 0.50,
+            "maintenance_cost": "medium",
+            "premium": False,
+        },
+        "Datsun": {
+            "reliability": 0.60,
+            "liquidity": 0.40,
+            "maintenance_cost": "low",
+            "premium": False,
+        },
+        "Chevrolet": {
+            "reliability": 0.50,
+            "liquidity": 0.30,
+            "maintenance_cost": "high",
+            "premium": False,
+        },
+        "Fiat": {
+            "reliability": 0.40,
+            "liquidity": 0.20,
+            "maintenance_cost": "high",
+            "premium": False,
+        },
+        "Mitsubishi": {
+            "reliability": 0.60,
+            "liquidity": 0.20,
+            "maintenance_cost": "high",
+            "premium": False,
+        },
+        "Ssangyong": {
+            "reliability": 0.50,
+            "liquidity": 0.10,
+            "maintenance_cost": "high",
+            "premium": False,
+        },
+        "Isuzu": {
+            "reliability": 0.80,
+            "liquidity": 0.20,
+            "maintenance_cost": "medium",
+            "premium": False,
+        },
+        "Force": {
+            "reliability": 0.70,
+            "liquidity": 0.30,
+            "maintenance_cost": "medium",
+            "premium": False,
+        },
+    }
+
     def __init__(self, df: pd.DataFrame):
         self._build_knowledge_base(df)
+
+    def get_brand_knowledge(self, brand: str) -> Dict[str, Any]:
+        """Returns market knowledge about a brand."""
+        return self.BRAND_KNOWLEDGE.get(
+            brand,
+            {
+                "reliability": 0.65,
+                "liquidity": 0.50,
+                "maintenance_cost": "medium",
+                "premium": False,
+            },
+        )
 
     def _build_knowledge_base(self, df: pd.DataFrame):
         """

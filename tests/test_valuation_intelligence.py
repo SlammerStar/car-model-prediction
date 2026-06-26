@@ -69,11 +69,12 @@ def test_get_market_position(valuation_engine):
 
 def test_generate_valuation_report(valuation_engine):
     pipeline = MockPipeline()
-    input_data = pd.DataFrame([{"brand": "Test", "model": "Car"}])
+    input_data = pd.DataFrame([{"brand": "Test", "model": "Car", "car_age": 2}])
     X = pd.DataFrame(
         [
             {
-                "car_age": 5,
+                "car_age": 2,
+                "confidence_count": 50,
                 "brand_resale_retention_score": 1.1,
                 "owner_risk_score": 0.1,
                 "market_stability_score": 0.9,
@@ -85,6 +86,12 @@ def test_generate_valuation_report(valuation_engine):
     )
 
     report = valuation_engine.generate_valuation_report(pipeline, input_data, X)
+    print(
+        "DEBUG:",
+        report["market_position"],
+        report["confidence"],
+        report["risk_assessment"],
+    )
 
     assert report["estimated_market_value_raw"] == 500000.0
     assert report["market_position"] == "Undervalued"
