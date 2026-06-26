@@ -899,8 +899,10 @@ def create_input_dataframe(
             "mileage": [mileage],
             "km_driven": [km_driven],
             "fuelType": [fuel_type.strip()],
+            "fuel_type": [fuel_type.strip()],
             "mpg": [mpg],
             "engineSize": [engine_size],
+            "engine_cc": [engine_size * 1000.0],
             "km_per_year": [km_per_year],
             "premium_brand_flag": [premium_brand_flag],
         }
