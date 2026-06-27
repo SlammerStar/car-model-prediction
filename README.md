@@ -206,35 +206,48 @@ DRIVEIQ was subjected to rigorous validation to ensure production-grade reliabil
 
 ## 📸 Platform Capabilities & Screenshots
 
-All visual assets reside in the `assets/` directory.
+All visual assets reside in the `assets/` directory and reflect the live, running application.
 
 ### Core Interface
-| Landing Page | Vehicle Configuration | AI Dashboard |
+| Landing Page | Vehicle Configuration | Prediction Dashboard |
 | :---: | :---: | :---: |
-| ![Landing](assets/landing.png) | ![Configuration](assets/configuration.png) | ![Dashboard](assets/dashboard.png) |
+| ![Landing Page](assets/landing.png)<br><sub>The entry point with dynamic market insights.</sub> | ![Configuration](assets/configuration.png)<br><sub>Auto-populating specification options via the Knowledge Engine.</sub> | ![Dashboard](assets/valuation-dashboard.png)<br><sub>The full ML inference and analysis overview.</sub> |
 
-### Decision Support
-| Market Intelligence | Negotiation Assistant | Ownership Analysis |
-| :---: | :---: | :---: |
-| ![Market Intel](assets/market_intelligence.png) | ![Negotiation](assets/negotiation.png) | ![Ownership](assets/ownership.png) |
+### Decision Intelligence
+| Hero Card | AI Summary | Negotiation Assistant | Risk Analysis |
+| :---: | :---: | :---: | :---: |
+| ![Hero Card](assets/hero-card.png)<br><sub>The unified Deal Score and recommendation.</sub> | ![AI Summary](assets/ai-summary.png)<br><sub>Natural language XAI feature breakdown.</sub> | ![Negotiation](assets/negotiation-assistant.png)<br><sub>Stress-testing asking prices against market reality.</sub> | ![Risk Analysis](assets/risk-analysis.png)<br><sub>Categorizing brand liquidity and maintenance risks.</sub> |
 
-### Documentation
-| PDF Report | Architecture Diagram | Workflow |
-| :---: | :---: | :---: |
-| ![PDF Report](assets/pdf-report.png) | ![Architecture](assets/architecture.png) | ![Workflow](assets/workflow.png) |
+### Market Intelligence
+| Market Intelligence Overview | Ownership Cost | Future Value Forecast | Similar Vehicles |
+| :---: | :---: | :---: | :---: |
+| ![Market Intel](assets/market-intelligence.png)<br><sub>Aggregated depreciation and running costs.</sub> | ![Ownership Cost](assets/ownership-cost.png)<br><sub>Highly realistic 5-year expense projections.</sub> | ![Future Value](assets/future-value.png)<br><sub>Multi-year depreciation curve plotting.</sub> | ![Similar Vehicles](assets/similar-vehicles.png)<br><sub>Identifying market alternatives based on specs.</sub> |
+
+### Professional Reports & Mobile
+| PDF Report Preview | Mobile Experience |
+| :---: | :---: |
+| ![PDF Report](assets/pdf-report.png)<br><sub>Exporting full dashboard analysis to an offline FPDF document.</sub> | ![Mobile View](assets/mobile-view.png)<br><sub>Responsive layout adapting to mobile viewports.</sub> |
 
 ---
 
 ## 📂 Repository Assets
 
-The repository utilizes a centralized `assets/` directory to store static graphics for this README:
+The repository utilizes a centralized `assets/` directory to store high-fidelity, real screenshots of the application:
 * `assets/banner.png` — Main repository hero graphic.
 * `assets/logo.png` — DRIVEIQ branding logo.
-* `assets/dashboard.png` — High-fidelity mockup of the AI Dashboard.
-* `assets/pdf-report.png` — Example FPDF generated offline report.
-* `assets/architecture.png` — Visual map of the internal system architecture.
-* `assets/workflow.png` — Sequence diagram of user interaction.
-* `assets/demo.gif` — Animated GIF showcasing the platform in action.
+* `assets/landing.png` — Clean screenshot of the initial application state.
+* `assets/configuration.png` — Demonstration of dynamic form population.
+* `assets/valuation-dashboard.png` — Full page capture of the prediction engine.
+* `assets/hero-card.png` — Focused shot of the primary Deal Score module.
+* `assets/ai-summary.png` — Focused shot of the Explainable AI (SHAP) text.
+* `assets/risk-analysis.png` — The dynamic risk profiling component.
+* `assets/market-intelligence.png` — The Market Intelligence tab overview.
+* `assets/negotiation-assistant.png` — The buyer insights and negotiation slider.
+* `assets/ownership-cost.png` — The 5-year running cost breakdown chart.
+* `assets/future-value.png` — The depreciation forecast line chart.
+* `assets/similar-vehicles.png` — The nearest neighbor market alternatives.
+* `assets/pdf-report.png` — The offline document generation section.
+* `assets/mobile-view.png` — Representation of the responsive UI on mobile devices.
 
 ---
 
